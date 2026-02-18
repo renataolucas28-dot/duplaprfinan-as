@@ -625,21 +625,6 @@ with aba2:
                 )
                 st.plotly_chart(fig_pizza, use_container_width=True, config={"displayModeBar": False})
 
-                # ── TOP 3 CATEGORIAS ──
-                st.markdown('<div class="section-title">Top gastos</div>', unsafe_allow_html=True)
-                top3 = cat_group.head(3)
-                for _, row in top3.iterrows():
-                    pct = row["Valor"] / saidas * 100 if saidas > 0 else 0
-                    st.markdown(f"""
-                    <div class="top-gasto-row">
-                        <span class="top-gasto-nome">🏷️ {row['Categoria']}</span>
-                        <span class="top-gasto-valor">R$ {row['Valor']:,.2f}
-                            <span class="top-gasto-pct">({pct:.0f}%)</span>
-                        </span>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("Sem saídas neste mês.")
 
             # ── GRÁFICO HISTÓRICO MENSAL (barras) ──
             st.markdown('<div class="section-title">Histórico mensal</div>', unsafe_allow_html=True)
@@ -667,29 +652,6 @@ with aba2:
             fig_hist.update_xaxes(showgrid=False, fixedrange=True)
             fig_hist.update_yaxes(gridcolor="#f0f0f0", fixedrange=True)
             st.plotly_chart(fig_hist, use_container_width=True, config={"displayModeBar": False, "staticPlot": False})
-
-            # ── GRÁFICO SALDO ACUMULADO ──
-            st.markdown('<div class="section-title">Saldo acumulado</div>', unsafe_allow_html=True)
-            df_pivot = df_evolucao.pivot(index="Mês", columns="Tipo", values="Valor").fillna(0).reset_index()
-            df_pivot["Saldo"] = df_pivot.get("Entrada", 0) - df_pivot.get("Saída", 0)
-            df_pivot["Acumulado"] = df_pivot["Saldo"].cumsum()
-
-            fig_acum = px.line(
-                df_pivot, x="Mês", y="Acumulado",
-                markers=True,
-                color_discrete_sequence=["#8e44ad"]
-            )
-            fig_acum.update_layout(
-                xaxis_title="", yaxis_title="R$",
-                margin=dict(t=10, b=10, l=10, r=10),
-                height=210,
-                plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor="rgba(0,0,0,0)",
-            )
-            fig_acum.update_xaxes(showgrid=False, fixedrange=True)
-            fig_acum.update_yaxes(gridcolor="#f0f0f0", fixedrange=True)
-            fig_acum.add_hline(y=0, line_dash="dash", line_color="rgba(255,0,0,0.3)")
-            st.plotly_chart(fig_acum, use_container_width=True, config={"displayModeBar": False})
 
             # ── DIVISÃO POR PESSOA ──
             df_pessoa = df_mes[df_mes["tipo"] == "Saída"].groupby("quem")["valor"].sum()
