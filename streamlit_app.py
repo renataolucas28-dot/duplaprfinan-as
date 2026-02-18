@@ -1,17 +1,23 @@
 import streamlit as st
-import pandas as pd
+from streamlit_gsheets import GSheetsConnection
 
-st.title("✅ Pandas OK!")
+st.title("🧪 Teste Google Sheets")
 
-# Testa pandas
-dados = pd.DataFrame({
-    "data": ["2026-02-18"],
-    "descricao": ["Teste pandas"],
-    "valor": [100.50]
-})
+st.info("Conectando na planilha...")
 
-st.success("Pandas instalado!")
-st.dataframe(dados)
-st.metric("Total", dados["valor"].sum())
+try:
+    conn = st.connection("gsheets", type=GSheetsConnection)
+    df = conn.read()
+    
+    if df is not None:
+        st.success("✅ GOOGLE SHEETS CONECTADO!")
+        st.dataframe(df)
+        st.metric("Linhas", len(df))
+    else:
+        st.warning("📭 Planilha vazia, mas conexão OK!")
+        
+except Exception as e:
+    st.error(f"❌ Erro: {e}")
+    st.info("Verifique secrets + permissões da service account")
 
-st.info("✅ Pandas funcionando! Próximo: gsheets-connection")
+st.success("Teste concluído!")
