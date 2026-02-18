@@ -347,7 +347,77 @@ with aba1:
 # ══════════════════════════════════════════
 # ABA 2 - ANÁLISES
 # ══════════════════════════════════════════
+# ══════════════════════════════════════════
+# ABA 2 - ANÁLISES
+# ══════════════════════════════════════════
 with aba2:
+
+    # ── CSS DOS CARDS ──
+    st.markdown("""
+    <style>
+        .section-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #7f8c9a;
+            margin: 18px 0 8px 2px;
+        }
+        .hero-card {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            border-radius: 20px;
+            padding: 22px 18px 18px;
+            color: white;
+            margin-bottom: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+        }
+        .hero-card .label {
+            font-size: 0.75rem;
+            opacity: 0.65;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .hero-card .value {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+        .hero-card .sub {
+            font-size: 0.78rem;
+            opacity: 0.55;
+            margin-top: 4px;
+        }
+        .mini-card {
+            border-radius: 16px;
+            padding: 14px 12px;
+            color: white;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        }
+        .mini-card .mc-label {
+            font-size: 0.72rem;
+            opacity: 0.75;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+        }
+        .mini-card .mc-value {
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin-top: 2px;
+            line-height: 1.1;
+        }
+        .mini-card .mc-icon {
+            font-size: 1.4rem;
+            margin-bottom: 4px;
+        }
+        .mc-green  { background: linear-gradient(135deg, #11723e, #27ae60); }
+        .mc-red    { background: linear-gradient(135deg, #7b1a1a, #e74c3c); }
+        .mc-purple { background: linear-gradient(135deg, #4a1a7b, #8e44ad); }
+        .mc-blue   { background: linear-gradient(135deg, #1a3a7b, #2e6da4); }
+    </style>
+    """, unsafe_allow_html=True)
 
     try:
         df = ler_dados()
@@ -355,6 +425,7 @@ with aba2:
         if df.empty:
             st.info("📭 Sem dados ainda.")
         else:
+
             # ── FILTRO DE MÊS ──
             meses_disponiveis = df["data"].dt.to_period("M").dropna().unique()
             meses_str = sorted([str(m) for m in meses_disponiveis], reverse=True)
@@ -380,6 +451,7 @@ with aba2:
             # ── MINI CARDS: ENTRADAS / SAÍDAS / INVESTIDO ──
             st.markdown('<div class="section-title">Resumo do mês</div>', unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
+
             with c1:
                 st.markdown(f"""
                 <div class="mini-card mc-green">
@@ -406,7 +478,7 @@ with aba2:
                     <div class="mc-value">R${saldo_inv:,.0f}</div>
                 </div>""", unsafe_allow_html=True)
 
-            # ── GRÁFICO PIZZA CATEGORIAS ──
+            # ── GRÁFICO PIZZA: GASTOS POR CATEGORIA ──
             df_saidas_mes = df_mes[df_mes["tipo"] == "Saída"]
             if not df_saidas_mes.empty:
                 st.markdown('<div class="section-title">Gastos por categoria</div>', unsafe_allow_html=True)
@@ -430,10 +502,10 @@ with aba2:
                 )
                 st.plotly_chart(fig_pizza, use_container_width=True, config={"displayModeBar": False})
 
-                # Top 3 categorias
+                # ── TOP 3 CATEGORIAS ──
                 st.markdown('<div class="section-title">Top gastos</div>', unsafe_allow_html=True)
                 top3 = cat_group.head(3)
-                for i, row in top3.iterrows():
+                for _, row in top3.iterrows():
                     pct = row["Valor"] / saidas * 100 if saidas > 0 else 0
                     st.markdown(f"""
                     <div style="display:flex; justify-content:space-between; align-items:center;
@@ -444,8 +516,10 @@ with aba2:
                         </span>
                     </div>
                     """, unsafe_allow_html=True)
+            else:
+                st.info("Sem saídas neste mês.")
 
-            # ── GRÁFICO HISTÓRICO FIXO (sem barra de ferramentas) ──
+            # ── GRÁFICO HISTÓRICO FIXO ──
             st.markdown('<div class="section-title">Histórico mensal</div>', unsafe_allow_html=True)
             df_evolucao = (
                 df.groupby([df["data"].dt.to_period("M"), "tipo"])["valor"]
@@ -453,6 +527,7 @@ with aba2:
             )
             df_evolucao["data"] = df_evolucao["data"].astype(str)
             df_evolucao.columns = ["Mês", "Tipo", "Valor"]
+
             fig_hist = px.bar(
                 df_evolucao, x="Mês", y="Valor", color="Tipo",
                 barmode="group",
@@ -465,16 +540,16 @@ with aba2:
                 height=230,
                 plot_bgcolor="rgba(0,0,0,0)",
                 paper_bgcolor="rgba(0,0,0,0)",
-                dragmode=False       # ← desativa arraste/zoom
+                dragmode=False
             )
-            fig_hist.update_xaxes(showgrid=False, fixedrange=True)   # ← eixo X fixo
-            fig_hist.update_yaxes(gridcolor="#f0f0f0", fixedrange=True)  # ← eixo Y fixo
+            fig_hist.update_xaxes(showgrid=False, fixedrange=True)
+            fig_hist.update_yaxes(gridcolor="#f0f0f0", fixedrange=True)
             st.plotly_chart(
                 fig_hist,
                 use_container_width=True,
                 config={
-                    "displayModeBar": False,   # ← remove toda a barra de ferramentas
-                    "staticPlot": False        # mantém tooltips ao passar o dedo
+                    "displayModeBar": False,
+                    "staticPlot": False
                 }
             )
 
@@ -519,6 +594,7 @@ with aba2:
 
     except Exception as e:
         st.error(f"Erro: {e}")
+
 
 # ══════════════════════════════════════════
 # ABA 3 - INVESTIMENTOS
