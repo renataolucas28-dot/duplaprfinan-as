@@ -2,56 +2,53 @@ import streamlit as st
 import pandas as pd
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 import datetime as dt
 
-# ID da SUA planilha
 SPREADSHEET_ID = "1_PmKlDUdZxp3UBlopyrPUlccJy_aP5aA_HvXa3FwqDo"
+ABA_NOME = "Registro"
 
-st.title("💰 Finanças Casal - FUNCIONANDO!")
-st.success("✅ Service account conectada!")
+st.title("💰 Finanças Casal - PRONTO!")
 
-@st.cache_data(ttl=300)
-def ler_planilha():
-    try:
-        credentials = service_account.Credentials.from_service_account_info(
-            st.secrets["connections"]["gsheets"],
-            scopes=["https://www.googleapis.com/auth/spreadsheets"]
-        )
-        
-        service = build('sheets', 'v4', credentials=credentials)
-        
-        # TESTA DIFERENTES NOMES DE ABA
-        ranges = ["Sheet1!A:E", "Página1!A:E", "Sheet1", "Página1"]
-        
-        for range_name in ranges:
-            try:
-                result = service.spreadsheets().values().get(
-                    spreadsheetId=SPREADSHEET_ID,
-                    range=range_name
-                ).execute()
-                
-                values = result.get('values', [])
-                if values:
-                    return pd.DataFrame(values[1:], columns=values[0])
-            except:
-                continue
-        
-        # Se nenhuma aba funcionar, cria estrutura vazia
-        return pd.DataFrame(columns=["data", "descricao", "categoria", "valor", "quem"])
-        
-    except Exception as e:
-        st.error(f"Erro: {e}")
-        return pd.DataFrame()
+# Credenciais
+creds = service_account.Credentials.from_service_account_info(
+    st.secrets["connections"]["gsheets"],
+    scopes=["https://www.googleapis.com/auth/spreadsheets"]
+)
+service = build('sheets', 'v4', credentials=creds)
 
-# LER
-df = ler_planilha()
-
-if not df.empty:
-    st.success("✅ DADOS ENCONTRADOS!")
-    st.dataframe(df)
-else:
-    st.info("📭 Primeira vez - estrutura OK!")
+# 1. CRIAR CABEÇALHO (se não existir)
+try:
+    # Verifica se tem dados
+    result = service.spreadsheets().values().get(
+        spreadsheetId=SPREADSHEET_ID, range=f"{ABA_NOME}!A1:E1"
+    ).execute()
+    
+    if not result.get('values'):
+        # CRIA CABEÇALHO
+        cabecalho = [["data", "descricao", "categoria", "valor", "quem"]]
+        service.spreadsheets().values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range=f"{ABA_NOME}!A1:E1",
+            valueInputOption="RAW",
+            body={"values": cabecalho}
+        ).execute()
+        st.success("✅ Cabeçalho criado!")
+    
+    # LÊ DADOS (pula linha 1)
+    result = service.spreadsheets().values().get(
+        spreadsheetId=SPREADSHEET_ID, range=f"{ABA_NOME}!A:E"
+    ).execute()
+    
+    values = result.get('values', [])
+    if len(values) > 1:  # Tem dados além do cabeçalho
+        df = pd.DataFrame(values[1:], columns=values[0])
+        st.success("✅ Dados carregados!")
+        st.dataframe(df)
+    else:
+        st.info("📭 Sem lançamentos ainda")
+        
+except Exception as e:
+    st.error(f"Erro: {e}")
 
 # FORMULÁRIO
 st.markdown("---")
@@ -60,26 +57,30 @@ st.subheader("➕ Novo Gasto")
 col1, col2, col3, col4 = st.columns(4)
 with col1: data = st.date_input("Data", dt.date.today())
 with col2: descricao = st.text_input("O que foi?")
-with col3: categoria = st.selectbox("Categoria", ["Alimentação", "Transporte", "Moradia", "Lazer"])
+with col3: categoria = st.selectbox("Categoria", ["Alimentação", "Transporte", "Conta fixa", "Lazer"])
 with col4: valor = st.number_input("Valor R$", 0.0)
 
 quem = st.radio("Quem pagou:", ["Eu", "Namorada"])
 
-if st.button("💾 SALVAR", type="primary"):
-    novo = [[data.isoformat(), descricao, categoria, float(valor), quem]]
+if st.button("💾 SALVAR NA PLANILHA", type="primary"):
+    novo_registro = [[
+        data.isoformat(),
+        descricao or "Sem descrição",
+        categoria,
+        float(valor),
+        quem
+    ]]
     
-    credentials = service_account.Credentials.from_service_account_info(
-        st.secrets["connections"]["gsheets"],
-        scopes=["https://www.googleapis.com/auth/spreadsheets"]
-    )
-    
-    service = build('sheets', 'v4', credentials=credentials)
     service.spreadsheets().values().append(
         spreadsheetId=SPREADSHEET_ID,
-        range="Sheet1!A:E",  # Tenta Sheet1 primeiro
+        range=f"{ABA_NOME}!A:E",
         valueInputOption="RAW",
-        body={"values": novo}
+        body={"values": novo_registro}
     ).execute()
     
-    st.success("✅ SALVO na planilha!")
+    st.balloons()
+    st.success("✅ SALVO na aba 'Registro'!")
     st.rerun()
+
+st.markdown("---")
+st.caption("👩‍❤️‍👨 App pronto para vocês usarem!")
