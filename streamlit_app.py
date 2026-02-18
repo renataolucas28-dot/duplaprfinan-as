@@ -345,13 +345,12 @@ with aba1:
         st.error(f"Erro: {e}")
 
 # ══════════════════════════════════════════
-# ABA 2 - ANÁLISES (visual mobile premium)
+# ABA 2 - ANÁLISES
 # ══════════════════════════════════════════
 with aba2:
 
     try:
         df = ler_dados()
-        df_inv = ler_investimentos()
 
         if df.empty:
             st.info("📭 Sem dados ainda.")
@@ -363,106 +362,8 @@ with aba2:
             df_mes = df[df["data"].dt.to_period("M").astype(str) == mes_selecionado]
 
             entradas = df_mes[df_mes["tipo"] == "Entrada"]["valor"].sum()
-            saidas  = df_mes[df_mes["tipo"] == "Saída"]["valor"].sum()
-            saldo   = entradas - saidas
-
-            aportes_inv  = df_inv[df_inv["tipo"] == "Aporte"]["valor"].sum()  if not df_inv.empty else 0
-            resgates_inv = df_inv[df_inv["tipo"] == "Resgate"]["valor"].sum() if not df_inv.empty else 0
-            saldo_inv    = aportes_inv - resgates_inv
-
-            # ── CSS EXTRA PARA ESTA ABA ──
-            st.markdown("""
-            <style>
-                /* Seção título */
-                .section-title {
-                    font-size: 0.78rem;
-                    font-weight: 700;
-                    letter-spacing: 0.12em;
-                    text-transform: uppercase;
-                    color: #7f8c9a;
-                    margin: 18px 0 8px 2px;
-                }
-
-                /* Card principal de saldo */
-                .hero-card {
-                    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-                    border-radius: 20px;
-                    padding: 22px 18px 18px;
-                    color: white;
-                    margin-bottom: 14px;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-                }
-                .hero-card .label {
-                    font-size: 0.75rem;
-                    opacity: 0.65;
-                    letter-spacing: 0.08em;
-                    text-transform: uppercase;
-                    margin-bottom: 2px;
-                }
-                .hero-card .value {
-                    font-size: 2.2rem;
-                    font-weight: 800;
-                    letter-spacing: -0.02em;
-                    line-height: 1.1;
-                }
-                .hero-card .sub {
-                    font-size: 0.78rem;
-                    opacity: 0.55;
-                    margin-top: 4px;
-                }
-
-                /* Mini cards (entrada / saída / investimento) */
-                .mini-card {
-                    border-radius: 16px;
-                    padding: 14px 12px;
-                    color: white;
-                    margin-bottom: 10px;
-                    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-                }
-                .mini-card .mc-label {
-                    font-size: 0.72rem;
-                    opacity: 0.75;
-                    letter-spacing: 0.07em;
-                    text-transform: uppercase;
-                }
-                .mini-card .mc-value {
-                    font-size: 1.25rem;
-                    font-weight: 800;
-                    margin-top: 2px;
-                    line-height: 1.1;
-                }
-                .mini-card .mc-icon {
-                    font-size: 1.4rem;
-                    margin-bottom: 4px;
-                }
-                .mc-green  { background: linear-gradient(135deg, #11723e, #27ae60); }
-                .mc-red    { background: linear-gradient(135deg, #7b1a1a, #e74c3c); }
-                .mc-purple { background: linear-gradient(135deg, #4a1a7b, #8e44ad); }
-                .mc-blue   { background: linear-gradient(135deg, #1a3a7b, #2e6da4); }
-
-                /* Divider com label */
-                .divider-label {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    margin: 16px 0 10px;
-                }
-                .divider-label span {
-                    font-size: 0.78rem;
-                    font-weight: 700;
-                    letter-spacing: 0.1em;
-                    text-transform: uppercase;
-                    color: #7f8c9a;
-                    white-space: nowrap;
-                }
-                .divider-label hr {
-                    flex: 1;
-                    border: none;
-                    border-top: 1px solid #e0e0e0;
-                    margin: 0;
-                }
-            </style>
-            """, unsafe_allow_html=True)
+            saidas   = df_mes[df_mes["tipo"] == "Saída"]["valor"].sum()
+            saldo    = entradas - saidas
 
             # ── HERO CARD: SALDO DO MÊS ──
             sinal   = "+" if saldo >= 0 else ""
@@ -476,7 +377,7 @@ with aba2:
             </div>
             """, unsafe_allow_html=True)
 
-            # ── MINI CARDS: ENTRADAS / SAÍDAS / INVEST ──
+            # ── MINI CARDS: ENTRADAS / SAÍDAS / INVESTIDO ──
             st.markdown('<div class="section-title">Resumo do mês</div>', unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
             with c1:
@@ -494,58 +395,16 @@ with aba2:
                     <div class="mc-value">R${saidas:,.0f}</div>
                 </div>""", unsafe_allow_html=True)
             with c3:
+                df_inv = ler_investimentos()
+                aportes_inv  = df_inv[df_inv["tipo"] == "Aporte"]["valor"].sum()  if not df_inv.empty else 0
+                resgates_inv = df_inv[df_inv["tipo"] == "Resgate"]["valor"].sum() if not df_inv.empty else 0
+                saldo_inv    = aportes_inv - resgates_inv
                 st.markdown(f"""
                 <div class="mini-card mc-purple">
                     <div class="mc-icon">📈</div>
                     <div class="mc-label">Investido</div>
                     <div class="mc-value">R${saldo_inv:,.0f}</div>
                 </div>""", unsafe_allow_html=True)
-
-            # ── CARD INVESTIMENTOS DETALHADO ──
-            st.markdown('<div class="section-title">Carteira de Investimentos</div>', unsafe_allow_html=True)
-            ci1, ci2, ci3 = st.columns(3)
-            with ci1:
-                st.markdown(f"""
-                <div class="mini-card mc-green">
-                    <div class="mc-icon">💰</div>
-                    <div class="mc-label">Aportes</div>
-                    <div class="mc-value">R${aportes_inv:,.0f}</div>
-                </div>""", unsafe_allow_html=True)
-            with ci2:
-                st.markdown(f"""
-                <div class="mini-card mc-red">
-                    <div class="mc-icon">💸</div>
-                    <div class="mc-label">Resgates</div>
-                    <div class="mc-value">R${resgates_inv:,.0f}</div>
-                </div>""", unsafe_allow_html=True)
-            with ci3:
-                st.markdown(f"""
-                <div class="mini-card mc-blue">
-                    <div class="mc-icon">🏦</div>
-                    <div class="mc-label">Saldo</div>
-                    <div class="mc-value">R${saldo_inv:,.0f}</div>
-                </div>""", unsafe_allow_html=True)
-
-            # Distribuição por categoria de investimento
-            if not df_inv.empty:
-                df_ap = df_inv[df_inv["tipo"] == "Aporte"]
-                if not df_ap.empty:
-                    cat_inv = df_ap.groupby("categoria")["valor"].sum().reset_index()
-                    fig_inv = px.pie(
-                        cat_inv, values="valor", names="categoria",
-                        hole=0.5
-                    )
-                    fig_inv.update_traces(
-                        textposition='inside',
-                        textinfo='percent+label',
-                        textfont_size=10
-                    )
-                    fig_inv.update_layout(
-                        showlegend=False,
-                        margin=dict(t=10, b=10, l=10, r=10),
-                        height=220
-                    )
-                    st.plotly_chart(fig_inv, use_container_width=True)
 
             # ── GRÁFICO PIZZA CATEGORIAS ──
             df_saidas_mes = df_mes[df_mes["tipo"] == "Saída"]
@@ -569,7 +428,7 @@ with aba2:
                     margin=dict(t=10, b=10, l=10, r=10),
                     height=240
                 )
-                st.plotly_chart(fig_pizza, use_container_width=True)
+                st.plotly_chart(fig_pizza, use_container_width=True, config={"displayModeBar": False})
 
                 # Top 3 categorias
                 st.markdown('<div class="section-title">Top gastos</div>', unsafe_allow_html=True)
@@ -586,7 +445,7 @@ with aba2:
                     </div>
                     """, unsafe_allow_html=True)
 
-            # ── GRÁFICO HISTÓRICO ──
+            # ── GRÁFICO HISTÓRICO FIXO (sem barra de ferramentas) ──
             st.markdown('<div class="section-title">Histórico mensal</div>', unsafe_allow_html=True)
             df_evolucao = (
                 df.groupby([df["data"].dt.to_period("M"), "tipo"])["valor"]
@@ -605,11 +464,19 @@ with aba2:
                 margin=dict(t=10, b=10, l=10, r=10),
                 height=230,
                 plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor="rgba(0,0,0,0)"
+                paper_bgcolor="rgba(0,0,0,0)",
+                dragmode=False       # ← desativa arraste/zoom
             )
-            fig_hist.update_xaxes(showgrid=False)
-            fig_hist.update_yaxes(gridcolor="#f0f0f0")
-            st.plotly_chart(fig_hist, use_container_width=True)
+            fig_hist.update_xaxes(showgrid=False, fixedrange=True)   # ← eixo X fixo
+            fig_hist.update_yaxes(gridcolor="#f0f0f0", fixedrange=True)  # ← eixo Y fixo
+            st.plotly_chart(
+                fig_hist,
+                use_container_width=True,
+                config={
+                    "displayModeBar": False,   # ← remove toda a barra de ferramentas
+                    "staticPlot": False        # mantém tooltips ao passar o dedo
+                }
+            )
 
             # ── DIVISÃO POR PESSOA ──
             df_pessoa = df_mes[df_mes["tipo"] == "Saída"].groupby("quem")["valor"].sum()
