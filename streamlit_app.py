@@ -333,14 +333,18 @@ def salvar_investimento(data, categoria, motivo, tipo, valor):
         raise RuntimeError(f"Falha ao salvar investimento: {e}")
 
 def excluir_registro(indice_real, aba_id=0):
+    # garante que é int nativo
+    indice_real = int(indice_real)
+    aba_id = int(aba_id)
+
     linha = indice_real + 2
     requests = [{
         "deleteDimension": {
             "range": {
                 "sheetId": aba_id,
                 "dimension": "ROWS",
-                "startIndex": linha - 1,
-                "endIndex": linha
+                "startIndex": int(linha - 1),
+                "endIndex": int(linha)
             }
         }
     }]
