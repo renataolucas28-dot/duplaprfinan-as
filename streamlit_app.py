@@ -28,10 +28,10 @@ CATEGORIAS_ENTRADA = ["Salário", "Freelance", "Outros"]
 
 # ── 5 TIPOS DE GASTOS: PESSOAIS + COMPARTILHADOS ──
 PESSOAS = [
-    "Patrick só", 
-    "Renata só", 
-    "Patrick/Casal", 
-    "Renata/Casal", 
+    "Patrick só",
+    "Renata só",
+    "Patrick/Casal",
+    "Renata/Casal",
     "Casal"
 ]
 
@@ -152,7 +152,7 @@ def excluir_registro(indice_real):
     linha = int(indice_real) + 2
     requests = [{
         "deleteDimension": {
-            "range": {"sheetId": aba_id, "dimension": "ROWS", 
+            "range": {"sheetId": aba_id, "dimension": "ROWS",
                      "startIndex": linha-1, "endIndex": linha}
         }
     }]
@@ -169,10 +169,10 @@ def analisar_gastos_completos(df_mes):
     patrick_casal = df_mes[(df_mes["tipo"] == "Saída") & (df_mes["quem"] == "Patrick/Casal")]["valor"].sum()
     renata_casal = df_mes[(df_mes["tipo"] == "Saída") & (df_mes["quem"] == "Renata/Casal")]["valor"].sum()
     casal_puro = df_mes[(df_mes["tipo"] == "Saída") & (df_mes["quem"] == "Casal")]["valor"].sum()
-    
+
     patrick_total = patrick_so + (patrick_casal / 2)
     renata_total = renata_so + (renata_casal / 2)
-    
+
     return {
         "patrick_so": patrick_so, "renata_so": renata_so,
         "patrick_casal": patrick_casal, "renata_casal": renata_casal,
@@ -202,20 +202,20 @@ aba0, aba1, aba2, aba4 = st.tabs(["🏠 Início", "📝 Lançar", "📊 Análise
 # ══════════════════════════════════════════
 with aba0:
     st.markdown("### 👋 Olá, Patrick & Renata!")
-    
+
     try:
         if df_global.empty:
             st.info("📭 Nenhum lançamento ainda. Vá para **Lançar**!")
         else:
             mes_atual_str = str(dt.date.today().strftime("%Y-%m"))
             df_mes_atual = df_global[df_global["data"].dt.to_period("M").astype(str) == mes_atual_str]
-            
+
             entradas_atual = df_mes_atual[df_mes_atual["tipo"] == "Entrada"]["valor"].sum()
             saidas_atual = df_mes_atual[df_mes_atual["tipo"] == "Saída"]["valor"].sum()
             saldo_atual = entradas_atual - saidas_atual
-            
+
             gastos_home = analisar_gastos_completos(df_mes_atual)
-            
+
             # Hero card com totais
             sinal = "+" if saldo_atual >= 0 else ""
             cor_val = "#2ecc71" if saldo_atual >= 0 else "#e74c3c"
@@ -224,18 +224,18 @@ with aba0:
                 <div class="label">Saldo {dt.date.today().strftime('%B/%Y')}</div>
                 <div class="value" style="color:{cor_val};">{sinal}R$ {saldo_atual:,.2f}</div>
                 <div class="sub">
-                    Patrick: R${gastos_home['patrick_total']:,.0f} | 
+                    Patrick: R${gastos_home['patrick_total']:,.0f} |
                     Renata: R${gastos_home['renata_total']:,.0f}
                 </div>
             </div>""", unsafe_allow_html=True)
-            
+
             # Alertas metas
             alertas = []
             for cat, meta in METAS_PADRAO.items():
                 gasto_cat = df_mes_atual[(df_mes_atual["tipo"] == "Saída") & (df_mes_atual["categoria"] == cat)]["valor"].sum()
                 if meta > 0 and gasto_cat > meta:
                     alertas.append((cat, gasto_cat, meta))
-            
+
             if alertas:
                 st.markdown('<div class="section-title">⚠️ Metas Ultrapassadas</div>', unsafe_allow_html=True)
                 for cat, gasto, meta in alertas:
@@ -243,7 +243,7 @@ with aba0:
                     <div class="alerta-meta">
                         🚨 <strong>{cat}</strong>: R${gasto:,.2f} de R${meta:,.2f}
                     </div>""", unsafe_allow_html=True)
-            
+
             # Último lançamento
             ultimo = df_global.sort_values("data", ascending=False).iloc[0]
             emoji_tipo = "📈" if ultimo["tipo"] == "Entrada" else "📉"
@@ -256,35 +256,41 @@ with aba0:
                     {'+ ' if ultimo['tipo'] == 'Entrada' else '- '}R$ {float(ultimo['valor']):,.2f}
                 </div>
             </div>""", unsafe_allow_html=True)
-            
+
     except Exception as e:
         st.error(f"Erro: {e}")
 
 # ══════════════════════════════════════════
-# ABA 1 - LANÇAR (COM 5 TIPOS)
+# ABA 1 - LANÇAR (COM 5 TIPOS)  ✅ CORRIGIDO
 # ══════════════════════════════════════════
 with aba1:
     st.markdown("### ➕ Novo Lançamento")
-    
+
     with st.form("form_lancamento", clear_on_submit=True):
-        tipo = st.radio("Tipo:", ["📈 Entrada", "📉 Saída"], horizontal=True)
-        tipo_limpo = "Entrada" if "Entrada" in tipo else "Saída"
-        
+        # Aqui está a correção:
+        # Retorna "Entrada"/"Saída" como valor, e usa emoji só para exibição.
+        tipo_limpo = st.radio(
+            "Tipo:",
+            ["Entrada", "Saída"],
+            horizontal=True,
+            format_func=lambda x: "📈 Entrada" if x == "Entrada" else "📉 Saída"
+        )
+
         data = st.date_input("📅 Data", value=dt.date.today())
         descricao = st.text_input("📝 Descrição", placeholder="Ex: Gasolina semanal")
-        
+
         col_cat, col_quem = st.columns(2)
         with col_cat:
             categoria = st.selectbox(
-                "🏷️ Categoria", 
+                "🏷️ Categoria",
                 CATEGORIAS_ENTRADA if tipo_limpo == "Entrada" else CATEGORIAS_SAIDA
             )
         with col_quem:
             quem = st.selectbox("👥 Quem?", PESSOAS)
-            
+
         valor = st.number_input("💵 Valor (R$)", min_value=0.0, step=0.01, format="%.2f")
         submitted = st.form_submit_button("💾 SALVAR", type="primary", use_container_width=True)
-    
+
     if submitted:
         if valor == 0 or not descricao:
             st.warning("⚠️ Valor e descrição obrigatórios!")
@@ -295,7 +301,7 @@ with aba1:
                     st.toast(f"✅ {tipo_limpo} R$ {valor:.2f} salvo!", icon="💾")
                 except Exception as e:
                     st.error(f"Erro: {e}")
-    
+
     # Últimos lançamentos
     st.markdown("---")
     st.markdown("### 📋 Últimos 10")
@@ -310,7 +316,7 @@ with aba1:
                 "tipo": "Tipo", "valor_fmt": "Valor", "quem": "Quem"
             })
             st.dataframe(df_show, use_container_width=True, hide_index=True)
-            
+
             with st.expander("🗑️ Excluir"):
                 opcoes = [f"{row['data_fmt']} | {row['descricao'][:30]} | {row['quem']}"
                          for _, row in df_sorted.iterrows()]
@@ -338,11 +344,11 @@ with aba2:
             meses_str = [str(m) for m in meses]
             mes_selecionado = st.selectbox("📅 Mês:", meses_str)
             df_mes = df[df["data"].dt.to_period("M").astype(str) == mes_selecionado]
-            
+
             entradas = df_mes[df_mes["tipo"] == "Entrada"]["valor"].sum()
             saidas = df_mes[df_mes["tipo"] == "Saída"]["valor"].sum()
             saldo = entradas - saidas
-            
+
             # Hero saldo
             st.markdown(f"""
             <div class="hero-card">
@@ -351,49 +357,49 @@ with aba2:
                     {'+' if saldo >= 0 else ''}R$ {saldo:,.2f}
                 </div>
             </div>""", unsafe_allow_html=True)
-            
+
             # ── 5 TIPOS DE GASTOS ──
             gastos = analisar_gastos_completos(df_mes)
-            
+
             st.markdown('<div class="section-title">Gastos por Tipo (5 categorias)</div>', unsafe_allow_html=True)
             cols1 = st.columns(3)
             cols2 = st.columns(2)
-            
+
             with cols1[0]:
                 st.markdown(f"""
                 <div class="mini-card mc-blue">
                     <div class="mc-icon">👨‍💼</div><div class="mc-label">Patrick só</div>
                     <div class="mc-value">R${gastos['patrick_so']:,.0f}</div>
                 </div>""", unsafe_allow_html=True)
-                
+
             with cols1[1]:
                 st.markdown(f"""
                 <div class="mini-card mc-purple">
                     <div class="mc-icon">👩‍💼</div><div class="mc-label">Renata só</div>
                     <div class="mc-value">R${gastos['renata_so']:,.0f}</div>
                 </div>""", unsafe_allow_html=True)
-                
+
             with cols1[2]:
                 st.markdown(f"""
                 <div class="mini-card mc-orange">
                     <div class="mc-icon">👨💑</div><div class="mc-label">Patrick/Casal</div>
                     <div class="mc-value">R${gastos['patrick_casal']:,.0f}</div>
                 </div>""", unsafe_allow_html=True)
-                
+
             with cols2[0]:
                 st.markdown(f"""
                 <div class="mini-card mc-pink">
                     <div class="mc-icon">👩💑</div><div class="mc-label">Renata/Casal</div>
                     <div class="mc-value">R${gastos['renata_casal']:,.0f}</div>
                 </div>""", unsafe_allow_html=True)
-                
+
             with cols2[1]:
                 st.markdown(f"""
                 <div class="mini-card mc-green">
                     <div class="mc-icon">💑</div><div class="mc-label">Casal puro</div>
                     <div class="mc-value">R${gastos['casal_puro']:,.0f}</div>
                 </div>""", unsafe_allow_html=True)
-            
+
             # TOTAIS
             st.markdown('<div class="section-title">Totais Individuais (50% compartilhados)</div>', unsafe_allow_html=True)
             c1, c2 = st.columns(2)
@@ -407,7 +413,7 @@ with aba2:
                 <div class="card-roxo">
                     <h3>Renata TOTAL</h3><h1>R${gastos['renata_total']:,.0f}</h1>
                 </div>""", unsafe_allow_html=True)
-            
+
             # Pizza gastos categorias
             df_saidas = df_mes[df_mes["tipo"] == "Saída"]
             if not df_saidas.empty:
@@ -417,18 +423,20 @@ with aba2:
                 fig.update_traces(textposition='inside', textinfo='percent+label')
                 fig.update_layout(height=280, showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
-            
+
             # Tabela mês
             st.markdown('<div class="section-title">Lançamentos</div>', unsafe_allow_html=True)
             df_show = df_mes.sort_values("data", ascending=False).copy()
             df_show["data"] = df_show["data"].dt.strftime("%d/%m")
             df_show["valor"] = df_show["valor"].apply(lambda x: f"R${x:.2f}")
             df_show = df_show[["data", "descricao", "quem", "categoria", "tipo", "valor"]]
-            st.dataframe(df_show.rename(columns={"data": "Data", "descricao": "Descrição", 
-                                                "quem": "Quem", "categoria": "Categoria", 
-                                                "tipo": "Tipo", "valor": "Valor"}), 
-                        use_container_width=True, hide_index=True)
-                        
+            st.dataframe(
+                df_show.rename(columns={"data": "Data", "descricao": "Descrição",
+                                        "quem": "Quem", "categoria": "Categoria",
+                                        "tipo": "Tipo", "valor": "Valor"}),
+                use_container_width=True, hide_index=True
+            )
+
     except Exception as e:
         st.error(f"Erro: {e}")
 
@@ -445,23 +453,27 @@ with aba4:
             meses = sorted(df["data"].dt.to_period("M").dropna().unique(), reverse=True)
             mes_meta = st.selectbox("📅 Mês:", [str(m) for m in meses])
             df_mes_meta = df[df["data"].dt.to_period("M").astype(str) == mes_meta]
-            
+
             # Meta global
             meta_global = st.number_input("🎯 Limite Total Mensal", value=5000.0, step=100.0)
             saidas_total = df_mes_meta[df_mes_meta["tipo"] == "Saída"]["valor"].sum()
-            prog_global = min(saidas_total / meta_global, 1.0)
+            prog_global = min(saidas_total / meta_global, 1.0) if meta_global > 0 else 1.0
             st.progress(prog_global, text=f"R$ {saidas_total:,.2f} / R$ {meta_global:,.2f}")
-            
+
             st.markdown("---")
             st.markdown("#### 🏷️ Por Categoria")
             for cat in CATEGORIAS_SAIDA:
-                gasto_cat = df_mes_meta[(df_mes_meta["tipo"] == "Saída") & 
+                gasto_cat = df_mes_meta[(df_mes_meta["tipo"] == "Saída") &
                                        (df_mes_meta["categoria"] == cat)]["valor"].sum()
-                meta_cat = st.number_input(f"{cat}", value=METAS_PADRAO.get(cat, 200.0), 
-                                         key=f"meta_{cat}", step=50.0)
+                meta_cat = st.number_input(
+                    f"{cat}",
+                    value=METAS_PADRAO.get(cat, 200.0),
+                    key=f"meta_{cat}",
+                    step=50.0
+                )
                 if meta_cat > 0:
                     prog = min(gasto_cat / meta_cat, 1.0)
                     st.progress(prog, text=f"{cat}: R${gasto_cat:,.0f}/{meta_cat:,.0f}")
-                    
+
     except Exception as e:
         st.error(f"Erro: {e}")
