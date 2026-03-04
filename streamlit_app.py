@@ -16,12 +16,10 @@ st.set_page_config(
 )
 
 SPREADSHEET_ID = "1_PmKlDUdZxp3UBlopyrPUlccJy_aP5aA_HvXa3FwqDo"
-ABA_NOME        = "Registro"
+ABA_NOME = "Registro"
 ABA_INVESTIMENTOS = "Investimentos"
-ABA_METAS       = "Metas"
-COLUNAS         = ["data", "descricao", "categoria", "tipo", "valor", "quem"]
-COLUNAS_INV     = ["data", "categoria", "motivo", "tipo", "valor"]
-COLUNAS_METAS   = ["categoria", "meta"]
+COLUNAS = ["data", "descricao", "categoria", "tipo", "valor", "quem"]
+COLUNAS_INV = ["data", "categoria", "motivo", "tipo", "valor"]
 
 CATEGORIAS_SAIDA = [
     "Mercado", "Contas Fixas", "Cartão de Crédito",
@@ -68,6 +66,7 @@ st.markdown("""
             font-size: 1rem !important;
         }
 
+        /* Cards principais */
         .card {
             background: linear-gradient(135deg, #1e3a5f, #2e6da4);
             border-radius: 16px;
@@ -112,13 +111,16 @@ st.markdown("""
         .card-roxo h3 { margin: 0; font-size: 0.85rem; opacity: 0.85; }
         .card-roxo h1 { margin: 4px 0; font-size: 1.5rem; }
 
+        /* Tabs responsivas no mobile - scroll horizontal sem quebra */
         .stTabs [data-baseweb="tab-list"] {
             overflow-x: auto;
             flex-wrap: nowrap;
             scrollbar-width: none;
             -ms-overflow-style: none;
         }
-        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar { display: none; }
+        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+            display: none;
+        }
         .stTabs [data-baseweb="tab"] {
             font-size: 0.85rem;
             padding: 8px 10px;
@@ -126,6 +128,7 @@ st.markdown("""
             white-space: nowrap;
         }
 
+        /* Cards de análise */
         .section-title {
             font-size: 0.78rem;
             font-weight: 700;
@@ -179,12 +182,16 @@ st.markdown("""
             margin-top: 2px;
             line-height: 1.1;
         }
-        .mini-card .mc-icon { font-size: 1.4rem; margin-bottom: 4px; }
+        .mini-card .mc-icon {
+            font-size: 1.4rem;
+            margin-bottom: 4px;
+        }
         .mc-green  { background: linear-gradient(135deg, #11723e, #27ae60); }
         .mc-red    { background: linear-gradient(135deg, #7b1a1a, #e74c3c); }
         .mc-purple { background: linear-gradient(135deg, #4a1a7b, #8e44ad); }
         .mc-blue   { background: linear-gradient(135deg, #1a3a7b, #2e6da4); }
 
+        /* Top gastos - compatível com dark mode */
         .top-gasto-row {
             display: flex;
             justify-content: space-between;
@@ -195,11 +202,22 @@ st.markdown("""
             padding: 10px 14px;
             margin-bottom: 6px;
         }
-        .top-gasto-nome { font-weight: 600; font-size: 0.9rem; }
-        /* MELHORIA 10: cor compatível com dark mode */
-        .top-gasto-valor { font-weight: 800; font-size: 0.9rem; color: inherit; }
-        .top-gasto-pct   { font-size: 0.75rem; color: #7f8c9a; font-weight: 400; }
+        .top-gasto-nome {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .top-gasto-valor {
+            font-weight: 800;
+            font-size: 0.9rem;
+            color: #2c5364;
+        }
+        .top-gasto-pct {
+            font-size: 0.75rem;
+            color: #7f8c9a;
+            font-weight: 400;
+        }
 
+        /* Card de alerta de meta */
         .alerta-meta {
             background: linear-gradient(135deg, #7b1a1a, #e74c3c);
             border-radius: 12px;
@@ -210,14 +228,12 @@ st.markdown("""
         }
 
         #MainMenu {visibility: hidden;}
-        footer      {visibility: hidden;}
+        footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────
 # CONEXÃO GOOGLE SHEETS
-# MELHORIA 1: service nunca fica no escopo global solto;
-# é sempre acessado via get_service() que está cacheado.
 # ─────────────────────────────────────────
 @st.cache_resource
 def get_service():
@@ -227,63 +243,33 @@ def get_service():
     )
     return build('sheets', 'v4', credentials=creds)
 
-# MELHORIA 3: busca os sheetIds reais uma única vez e cacheia.
-@st.cache_resource
-def get_sheet_ids():
-    meta = get_service().spreadsheets().get(
-        spreadsheetId=SPREADSHEET_ID
-    ).execute()
-    return {
-        sheet["properties"]["title"]: sheet["properties"]["sheetId"]
-        for sheet in meta["sheets"]
-    }
+service = get_service()
 
 # ── Garante cabeçalhos apenas uma vez por sessão ──
 if "cabecalho_ok" not in st.session_state:
     def garantir_cabecalho():
-        svc = get_service()
-        result = svc.spreadsheets().values().get(
+        result = service.spreadsheets().values().get(
             spreadsheetId=SPREADSHEET_ID,
             range=f"{ABA_NOME}!A1:F1"
         ).execute()
         if not result.get('values'):
-            svc.spreadsheets().values().update(
+            service.spreadsheets().values().update(
                 spreadsheetId=SPREADSHEET_ID,
                 range=f"{ABA_NOME}!A1:F1",
                 valueInputOption="RAW",
                 body={"values": [COLUNAS]}
             ).execute()
 
-        result_inv = svc.spreadsheets().values().get(
+        result_inv = service.spreadsheets().values().get(
             spreadsheetId=SPREADSHEET_ID,
             range=f"{ABA_INVESTIMENTOS}!A1:E1"
         ).execute()
         if not result_inv.get('values'):
-            svc.spreadsheets().values().update(
+            service.spreadsheets().values().update(
                 spreadsheetId=SPREADSHEET_ID,
                 range=f"{ABA_INVESTIMENTOS}!A1:E1",
                 valueInputOption="RAW",
                 body={"values": [COLUNAS_INV]}
-            ).execute()
-
-        result_metas = svc.spreadsheets().values().get(
-            spreadsheetId=SPREADSHEET_ID,
-            range=f"{ABA_METAS}!A1:B1"
-        ).execute()
-        if not result_metas.get('values'):
-            svc.spreadsheets().values().update(
-                spreadsheetId=SPREADSHEET_ID,
-                range=f"{ABA_METAS}!A1:B1",
-                valueInputOption="RAW",
-                body={"values": [COLUNAS_METAS]}
-            ).execute()
-            # Salva metas padrão na planilha na primeira execução
-            rows_metas = [[cat, val] for cat, val in METAS_PADRAO.items()]
-            svc.spreadsheets().values().append(
-                spreadsheetId=SPREADSHEET_ID,
-                range=f"{ABA_METAS}!A:B",
-                valueInputOption="RAW",
-                body={"values": rows_metas}
             ).execute()
 
     garantir_cabecalho()
@@ -294,7 +280,7 @@ if "cabecalho_ok" not in st.session_state:
 # ─────────────────────────────────────────
 @st.cache_data(ttl=60)
 def ler_dados():
-    result = get_service().spreadsheets().values().get(
+    result = service.spreadsheets().values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=f"{ABA_NOME}!A:F"
     ).execute()
@@ -302,14 +288,13 @@ def ler_dados():
     if len(values) > 1:
         df = pd.DataFrame(values[1:], columns=values[0])
         df["valor"] = pd.to_numeric(df["valor"], errors="coerce").fillna(0)
-        df["data"]  = pd.to_datetime(df["data"], errors="coerce")
-        # MELHORIA 6: reset_index garante índices sequenciais para mapeamento correto de linhas
-        return df.reset_index(drop=True)
+        df["data"] = pd.to_datetime(df["data"], errors="coerce")
+        return df
     return pd.DataFrame(columns=COLUNAS)
 
 @st.cache_data(ttl=60)
 def ler_investimentos():
-    result = get_service().spreadsheets().values().get(
+    result = service.spreadsheets().values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=f"{ABA_INVESTIMENTOS}!A:E"
     ).execute()
@@ -317,61 +302,14 @@ def ler_investimentos():
     if len(values) > 1:
         df = pd.DataFrame(values[1:], columns=values[0])
         df["valor"] = pd.to_numeric(df["valor"], errors="coerce").fillna(0)
-        df["data"]  = pd.to_datetime(df["data"], errors="coerce")
-        return df.reset_index(drop=True)
+        df["data"] = pd.to_datetime(df["data"], errors="coerce")
+        return df
     return pd.DataFrame(columns=COLUNAS_INV)
-
-# MELHORIA 4: metas lidas/salvas na planilha para persistência real
-@st.cache_data(ttl=300)
-def ler_metas():
-    result = get_service().spreadsheets().values().get(
-        spreadsheetId=SPREADSHEET_ID,
-        range=f"{ABA_METAS}!A:B"
-    ).execute()
-    values = result.get('values', [])
-    if len(values) > 1:
-        df = pd.DataFrame(values[1:], columns=["categoria", "meta"])
-        df["meta"] = pd.to_numeric(df["meta"], errors="coerce").fillna(0)
-        return dict(zip(df["categoria"], df["meta"]))
-    return METAS_PADRAO.copy()
-
-def salvar_metas(metas_dict: dict):
-    svc = get_service()
-    # Limpa as linhas antigas de dados (mantém cabeçalho)
-    sheet_ids = get_sheet_ids()
-    sid = int(sheet_ids.get(ABA_METAS, 2))
-    # Apaga a partir da linha 2 (índice 1)
-    requests = [{
-        "deleteDimension": {
-            "range": {
-                "sheetId": sid,
-                "dimension": "ROWS",
-                "startIndex": 1,
-                "endIndex": 1 + len(metas_dict) + 50  # margem de segurança
-            }
-        }
-    }]
-    try:
-        svc.spreadsheets().batchUpdate(
-            spreadsheetId=SPREADSHEET_ID,
-            body={"requests": requests}
-        ).execute()
-    except Exception:
-        pass  # ignora se não houver linhas suficientes
-
-    rows = [[cat, val] for cat, val in metas_dict.items()]
-    svc.spreadsheets().values().append(
-        spreadsheetId=SPREADSHEET_ID,
-        range=f"{ABA_METAS}!A:B",
-        valueInputOption="RAW",
-        body={"values": rows}
-    ).execute()
-    st.cache_data.clear()
 
 def salvar_registro(data, descricao, categoria, tipo, valor, quem):
     novo = [[data.isoformat(), descricao, categoria, tipo, float(valor), quem]]
     try:
-        get_service().spreadsheets().values().append(
+        service.spreadsheets().values().append(
             spreadsheetId=SPREADSHEET_ID,
             range=f"{ABA_NOME}!A:F",
             valueInputOption="RAW",
@@ -379,12 +317,12 @@ def salvar_registro(data, descricao, categoria, tipo, valor, quem):
         ).execute()
         st.cache_data.clear()
     except Exception as e:
-        st.error(f"❌ Falha ao salvar registro: {e}")
+        raise RuntimeError(f"Falha ao salvar: {e}")
 
 def salvar_investimento(data, categoria, motivo, tipo, valor):
     novo = [[data.isoformat(), categoria, motivo, tipo, float(valor)]]
     try:
-        get_service().spreadsheets().values().append(
+        service.spreadsheets().values().append(
             spreadsheetId=SPREADSHEET_ID,
             range=f"{ABA_INVESTIMENTOS}!A:E",
             valueInputOption="RAW",
@@ -392,45 +330,37 @@ def salvar_investimento(data, categoria, motivo, tipo, valor):
         ).execute()
         st.cache_data.clear()
     except Exception as e:
-        st.error(f"❌ Falha ao salvar investimento: {e}")
+        raise RuntimeError(f"Falha ao salvar investimento: {e}")
 
-# MELHORIA 3: usa sheetId real obtido via API, não índice hardcoded
-def excluir_registro(indice_df: int, nome_aba: str):
-    """
-    indice_df  : índice no DataFrame (0-based, já com reset_index)
-    nome_aba   : nome da aba ("Registro" ou "Investimentos")
-    """
-    sheet_ids = get_sheet_ids()
-    sid = sheet_ids.get(nome_aba)
-    if sid is None:
-        st.error(f"❌ Aba '{nome_aba}' não encontrada na planilha.")
-        return
+def excluir_registro(indice_real, aba_id=0):
+    # garante que é int nativo
+    indice_real = int(indice_real)
+    aba_id = int(aba_id)
 
-    # +2: pula cabeçalho (+1) e converte de 0-based para 1-based (+1)
-    linha_planilha = int(indice_df) + 2
+    linha = indice_real + 2
     requests = [{
         "deleteDimension": {
             "range": {
-                "sheetId": int(sid),
+                "sheetId": aba_id,
                 "dimension": "ROWS",
-                "startIndex": linha_planilha - 1,
-                "endIndex": linha_planilha
+                "startIndex": int(linha - 1),
+                "endIndex": int(linha)
             }
         }
     }]
     try:
-        get_service().spreadsheets().batchUpdate(
+        service.spreadsheets().batchUpdate(
             spreadsheetId=SPREADSHEET_ID,
             body={"requests": requests}
         ).execute()
         st.cache_data.clear()
     except Exception as e:
-        st.error(f"❌ Falha ao excluir linha: {e}")
+        raise RuntimeError(f"Falha ao excluir: {e}")
 
 # ─────────────────────────────────────────
-# MELHORIA 2: dados carregados UMA vez e reutilizados em todas as abas
+# CARREGA DADOS UMA VEZ (evita chamadas duplicadas)
 # ─────────────────────────────────────────
-df_global     = ler_dados()
+df_global = ler_dados()
 df_inv_global = ler_investimentos()
 
 # ─────────────────────────────────────────
@@ -443,12 +373,10 @@ st.markdown("---")
 # ─────────────────────────────────────────
 # ABAS PRINCIPAIS
 # ─────────────────────────────────────────
-aba0, aba1, aba2, aba3, aba4 = st.tabs(
-    ["🏠 Início", "📝 Lançar", "📊 Análises", "📈 Investimentos", "🎯 Metas"]
-)
+aba0, aba1, aba2, aba3, aba4 = st.tabs(["🏠 Início", "📝 Lançar", "📊 Análises", "📈 Investimentos", "🎯 Metas"])
 
 # ══════════════════════════════════════════
-# ABA 0 – INÍCIO
+# ABA 0 - INÍCIO (RESUMO RÁPIDO)
 # ══════════════════════════════════════════
 with aba0:
     st.markdown("### 👋 Olá, Patrick & Renata!")
@@ -457,18 +385,19 @@ with aba0:
         if df_global.empty:
             st.info("📭 Nenhum lançamento ainda. Vá para **Lançar** para começar!")
         else:
-            mes_atual_str = dt.date.today().strftime("%Y-%m")
-            df_mes_atual  = df_global[df_global["data"].dt.to_period("M").astype(str) == mes_atual_str]
+            # Mês atual
+            mes_atual_str = str(dt.date.today().strftime("%Y-%m"))
+            df_mes_atual = df_global[df_global["data"].dt.to_period("M").astype(str) == mes_atual_str]
 
             entradas_atual = df_mes_atual[df_mes_atual["tipo"] == "Entrada"]["valor"].sum()
             saidas_atual   = df_mes_atual[df_mes_atual["tipo"] == "Saída"]["valor"].sum()
             saldo_atual    = entradas_atual - saidas_atual
 
+            # Hero card saldo
             sinal   = "+" if saldo_atual >= 0 else ""
             cor_val = "#2ecc71" if saldo_atual >= 0 else "#e74c3c"
             emoji_s = "😊" if saldo_atual >= 0 else "😰"
             mes_label = dt.date.today().strftime("%B/%Y")
-
             st.markdown(f"""
             <div class="hero-card">
                 <div class="label">Saldo de {mes_label}</div>
@@ -477,6 +406,7 @@ with aba0:
             </div>
             """, unsafe_allow_html=True)
 
+            # Mini cards entradas / saídas
             c1, c2 = st.columns(2)
             with c1:
                 st.markdown(f"""
@@ -494,9 +424,8 @@ with aba0:
                 </div>""", unsafe_allow_html=True)
 
             # Alertas de metas ultrapassadas
-            metas_atuais = ler_metas()
             alertas = []
-            for cat, meta in metas_atuais.items():
+            for cat, meta in METAS_PADRAO.items():
                 gasto_cat = df_mes_atual[
                     (df_mes_atual["tipo"] == "Saída") & (df_mes_atual["categoria"] == cat)
                 ]["valor"].sum()
@@ -513,101 +442,76 @@ with aba0:
                     </div>
                     """, unsafe_allow_html=True)
 
-            # MELHORIA 11: dropna antes de pegar o último lançamento
+            # Último lançamento
             st.markdown('<div class="section-title">Último lançamento</div>', unsafe_allow_html=True)
-            df_validos = df_global.dropna(subset=["data"])
-            if not df_validos.empty:
-                ultimo = df_validos.sort_values("data", ascending=False).iloc[0]
-                emoji_tipo = "📈" if ultimo["tipo"] == "Entrada" else "📉"
-                st.markdown(f"""
-                <div style="background:var(--background-color,#f7f9fc); border:1px solid rgba(127,140,154,0.2);
-                            border-radius:12px; padding:12px 16px; margin-bottom:8px;">
-                    <div style="font-size:0.75rem; color:#7f8c9a;">{pd.to_datetime(ultimo['data']).strftime('%d/%m/%Y')} · {ultimo['quem']}</div>
-                    <div style="font-weight:700; font-size:1rem; margin-top:2px;">{emoji_tipo} {ultimo['descricao']}</div>
-                    <div style="font-weight:800; font-size:1.1rem; margin-top:2px; color:{'#27ae60' if ultimo['tipo'] == 'Entrada' else '#e74c3c'};">
-                        {'+ ' if ultimo['tipo'] == 'Entrada' else '- '}R$ {float(ultimo['valor']):,.2f}
-                    </div>
+            ultimo = df_global.sort_values("data", ascending=False).iloc[0]
+            emoji_tipo = "📈" if ultimo["tipo"] == "Entrada" else "📉"
+            st.markdown(f"""
+            <div style="background:var(--background-color,#f7f9fc); border:1px solid rgba(127,140,154,0.2);
+                        border-radius:12px; padding:12px 16px; margin-bottom:8px;">
+                <div style="font-size:0.75rem; color:#7f8c9a;">{pd.to_datetime(ultimo['data']).strftime('%d/%m/%Y')} · {ultimo['quem']}</div>
+                <div style="font-weight:700; font-size:1rem; margin-top:2px;">{emoji_tipo} {ultimo['descricao']}</div>
+                <div style="font-weight:800; font-size:1.1rem; margin-top:2px; color:{'#27ae60' if ultimo['tipo'] == 'Entrada' else '#e74c3c'};">
+                    {'+ ' if ultimo['tipo'] == 'Entrada' else '- '}R$ {float(ultimo['valor']):,.2f}
                 </div>
-                """, unsafe_allow_html=True)
+            </div>
+            """, unsafe_allow_html=True)
 
     except Exception as e:
-        st.error(f"Erro inesperado na aba Início: {e}")
+        st.error(f"Erro: {e}")
 
 # ══════════════════════════════════════════
-# ABA 1 – LANÇAMENTOS
+# ABA 1 - LANÇAMENTOS
 # ══════════════════════════════════════════
 with aba1:
     st.markdown("### ➕ Novo Lançamento")
 
-    tipo = st.radio("Tipo:", ["📈 Entrada", "📉 Saída"], horizontal=True, key="tipo_lanc")
-    tipo_limpo = "Entrada" if "Entrada" in tipo else "Saída"
+    with st.form("form_lancamento", clear_on_submit=True):
+        tipo = st.radio("Tipo:", ["📈 Entrada", "📉 Saída"], horizontal=True)
+        tipo_limpo = "Entrada" if "Entrada" in tipo else "Saída"
 
-    data      = st.date_input("📅 Data", value=dt.date.today(), key="data_lanc")
-    descricao = st.text_input("📝 Descrição", placeholder="Ex: Compra no mercado ou Jantar a dois", key="desc_lanc")
-
-    quem = st.radio("👤 Quem pagou?", ["Patrick", "Renata", "Nós dois"], horizontal=True, key="quem_lanc")
-
-    col_cat, col_val = st.columns(2)
-    with col_cat:
-        if tipo_limpo == "Entrada":
-            categoria = st.selectbox("🏷️ Categoria", CATEGORIAS_ENTRADA, key="cat_entrada")
-        else:
-            categoria = st.selectbox("🏷️ Categoria", CATEGORIAS_SAIDA, key="cat_saida")
-    with col_val:
-        valor = st.number_input("💵 Valor (R$)", min_value=0.0, step=0.01, format="%.2f", key="valor_lanc")
-
-    pct_patrick = None
-    pct_renata  = None
-
-    if quem == "Nós dois" and tipo_limpo == "Saída":
-        st.markdown("#### 💑 Como dividir esse gasto entre vocês?")
-        modo_split = st.radio(
-            "Escolha o tipo de divisão:",
-            ["50% / 50%", "Por porcentagem"],
-            horizontal=True, key="modo_split"
+        data = st.date_input("📅 Data", value=dt.date.today())
+        descricao = st.text_input(
+            "📝 Descrição",
+            placeholder="Ex: Compra no mercado"
         )
-        if modo_split == "Por porcentagem":
-            pct_patrick = st.slider("Patrick (%)", 0, 100, 50, key="pct_patrick")
-            pct_renata  = 100 - pct_patrick
-            st.caption(f"Renata fica com {pct_renata}% desse gasto.")
-        else:
-            pct_patrick = 50
-            pct_renata  = 50
 
-        # MELHORIA 5: \n correto dentro do st.info (usando markdown)
-        if valor > 0:
-            val_p = valor * (pct_patrick / 100)
-            val_r = valor * (pct_renata  / 100)
-            st.info(
-                f"Este gasto de **R$ {valor:.2f}** será lançado como:\n"
-                f"- Patrick: **R$ {val_p:.2f}**\n"
-                f"- Renata: **R$ {val_r:.2f}**"
-            )
+        # Categorias são fixas por tipo no momento do submit — usamos um selectbox padrão
+        # Nota: dentro do form o tipo não muda o selectbox dinamicamente,
+        # então exibimos todas separadas por um expander opcional.
+        col_cat, col_quem = st.columns(2)
+        with col_cat:
+            categoria_entrada = st.selectbox("🏷️ Categoria (Entrada)", CATEGORIAS_ENTRADA)
+            categoria_saida   = st.selectbox("🏷️ Categoria (Saída)", CATEGORIAS_SAIDA)
+        with col_quem:
+            quem = st.selectbox("👤 Quem?", PESSOAS)
 
-    if st.button("💾 SALVAR LANÇAMENTO", use_container_width=True):
+        valor = st.number_input("💵 Valor (R$)", min_value=0.0, step=0.01, format="%.2f")
+
+        submitted = st.form_submit_button("💾 SALVAR LANÇAMENTO", type="primary", use_container_width=True)
+
+    if submitted:
+        categoria = categoria_entrada if tipo_limpo == "Entrada" else categoria_saida
         if valor == 0:
             st.warning("⚠️ Coloque um valor maior que zero!")
-        elif not descricao.strip():
+        elif not descricao:
             st.warning("⚠️ Adicione uma descrição!")
         else:
             with st.spinner("Salvando..."):
-                if quem == "Nós dois" and tipo_limpo == "Saída":
-                    valor_p = round(valor * (pct_patrick / 100), 2)
-                    valor_r = round(valor * (pct_renata  / 100), 2)
-                    salvar_registro(data, descricao, categoria, tipo_limpo, valor_p, "Patrick")
-                    salvar_registro(data, descricao, categoria, tipo_limpo, valor_r, "Renata")
-                else:
+                try:
                     salvar_registro(data, descricao, categoria, tipo_limpo, valor, quem)
-                st.toast(f"✅ {tipo_limpo} de R$ {valor:.2f} salva!", icon="💾")
+                    st.toast(f"✅ {tipo_limpo} de R$ {valor:.2f} salva com sucesso!", icon="💾")
+                except Exception as e:
+                    st.error(f"Erro: {e}")
 
     st.markdown("---")
     st.markdown("### 📋 Últimos Lançamentos")
 
     try:
-        # MELHORIA 2: reutiliza df_global (cache já cuidou da chamada)
-        if not df_global.empty:
-            df_sorted = df_global.dropna(subset=["data"]).sort_values("data", ascending=False).head(10).copy()
-            df_sorted["data_fmt"]  = df_sorted["data"].dt.strftime("%d/%m/%Y")
+        df = ler_dados()
+        if not df.empty:
+            df_sorted = df.sort_values("data", ascending=False).head(10).copy()
+            df_sorted["data_fmt"] = df_sorted["data"].dt.strftime("%d/%m/%Y")
             df_sorted["valor_fmt"] = df_sorted["valor"].apply(lambda x: f"R$ {x:.2f}")
             df_show = df_sorted[["data_fmt", "descricao", "categoria", "tipo", "valor_fmt", "quem"]].rename(columns={
                 "data_fmt": "Data", "descricao": "Descrição",
@@ -621,45 +525,48 @@ with aba1:
                     f"{row['data_fmt']} | {row['descricao']} | R$ {row['valor']:.2f}"
                     for _, row in df_sorted.iterrows()
                 ]
-                selecao = st.selectbox("Selecione:", opcoes, key="sel_del_reg")
+                selecao = st.selectbox("Selecione:", opcoes)
                 idx_selecionado = opcoes.index(selecao)
-                # MELHORIA 6: índice correto no DataFrame com reset_index
                 indice_real = df_sorted.index[idx_selecionado]
                 confirmar_del = st.checkbox("☑️ Confirmar exclusão", key="confirm_del_reg")
                 if confirmar_del:
                     if st.button("🗑️ CONFIRMAR EXCLUSÃO", type="secondary", key="btn_del_reg"):
                         with st.spinner("Excluindo..."):
-                            # MELHORIA 3: passa nome da aba, não aba_id hardcoded
-                            excluir_registro(indice_real, ABA_NOME)
-                            st.toast("✅ Lançamento excluído!", icon="🗑️")
-                            st.rerun()
+                            try:
+                                excluir_registro(indice_real, aba_id=0)
+                                st.toast("✅ Lançamento excluído!", icon="🗑️")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro: {e}")
         else:
             st.info("📭 Nenhum lançamento ainda!")
     except Exception as e:
-        st.error(f"Erro ao listar lançamentos: {e}")
+        st.error(f"Erro: {e}")
 
 # ══════════════════════════════════════════
-# ABA 2 – ANÁLISES
+# ABA 2 - ANÁLISES
 # ══════════════════════════════════════════
 with aba2:
     try:
-        # MELHORIA 2: usa df_global diretamente
-        if df_global.empty:
+        df = ler_dados()
+
+        if df.empty:
             st.info("📭 Sem dados ainda.")
         else:
-            meses_disponiveis = df_global["data"].dt.to_period("M").dropna().unique()
+            # ── FILTRO DE MÊS ──
+            meses_disponiveis = df["data"].dt.to_period("M").dropna().unique()
             meses_str = sorted([str(m) for m in meses_disponiveis], reverse=True)
             mes_selecionado = st.selectbox("📅 Mês:", meses_str, key="mes_analise")
-            df_mes = df_global[df_global["data"].dt.to_period("M").astype(str) == mes_selecionado]
+            df_mes = df[df["data"].dt.to_period("M").astype(str) == mes_selecionado]
 
             entradas = df_mes[df_mes["tipo"] == "Entrada"]["valor"].sum()
             saidas   = df_mes[df_mes["tipo"] == "Saída"]["valor"].sum()
             saldo    = entradas - saidas
 
+            # ── HERO CARD: SALDO DO MÊS ──
             sinal   = "+" if saldo >= 0 else ""
             cor_val = "#2ecc71" if saldo >= 0 else "#e74c3c"
             emoji_s = "😊" if saldo >= 0 else "😰"
-
             st.markdown(f"""
             <div class="hero-card">
                 <div class="label">Saldo de {mes_selecionado}</div>
@@ -668,8 +575,10 @@ with aba2:
             </div>
             """, unsafe_allow_html=True)
 
+            # ── MINI CARDS: ENTRADAS / SAÍDAS ──
             st.markdown('<div class="section-title">Resumo do mês</div>', unsafe_allow_html=True)
             c1, c2 = st.columns(2)
+
             with c1:
                 st.markdown(f"""
                 <div class="mini-card mc-green">
@@ -685,6 +594,7 @@ with aba2:
                     <div class="mc-value">R${saidas:,.0f}</div>
                 </div>""", unsafe_allow_html=True)
 
+            # Card investimentos separado (linha inteira)
             aportes_inv  = df_inv_global[df_inv_global["tipo"] == "Aporte"]["valor"].sum()  if not df_inv_global.empty else 0
             resgates_inv = df_inv_global[df_inv_global["tipo"] == "Resgate"]["valor"].sum() if not df_inv_global.empty else 0
             saldo_inv    = aportes_inv - resgates_inv
@@ -695,6 +605,7 @@ with aba2:
                 <div class="mc-value">R${saldo_inv:,.0f}</div>
             </div>""", unsafe_allow_html=True)
 
+            # ── GRÁFICO PIZZA: GASTOS POR CATEGORIA ──
             df_saidas_mes = df_mes[df_mes["tipo"] == "Saída"]
             if not df_saidas_mes.empty:
                 st.markdown('<div class="section-title">Gastos por categoria</div>', unsafe_allow_html=True)
@@ -702,8 +613,15 @@ with aba2:
                 cat_group.columns = ["Categoria", "Valor"]
                 cat_group = cat_group.sort_values("Valor", ascending=False)
 
-                fig_pizza = px.pie(cat_group, values="Valor", names="Categoria", hole=0.45)
-                fig_pizza.update_traces(textposition='inside', textinfo='percent+label', textfont_size=10)
+                fig_pizza = px.pie(
+                    cat_group, values="Valor", names="Categoria",
+                    hole=0.45
+                )
+                fig_pizza.update_traces(
+                    textposition='inside',
+                    textinfo='percent+label',
+                    textfont_size=10
+                )
                 fig_pizza.update_layout(
                     showlegend=False,
                     margin=dict(t=10, b=10, l=10, r=10),
@@ -711,9 +629,11 @@ with aba2:
                 )
                 st.plotly_chart(fig_pizza, use_container_width=True, config={"displayModeBar": False})
 
+
+            # ── GRÁFICO HISTÓRICO MENSAL (barras) ──
             st.markdown('<div class="section-title">Histórico mensal</div>', unsafe_allow_html=True)
             df_evolucao = (
-                df_global.groupby([df_global["data"].dt.to_period("M"), "tipo"])["valor"]
+                df.groupby([df["data"].dt.to_period("M"), "tipo"])["valor"]
                 .sum().reset_index()
             )
             df_evolucao["data"] = df_evolucao["data"].astype(str)
@@ -735,8 +655,9 @@ with aba2:
             )
             fig_hist.update_xaxes(showgrid=False, fixedrange=True)
             fig_hist.update_yaxes(gridcolor="#f0f0f0", fixedrange=True)
-            st.plotly_chart(fig_hist, use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(fig_hist, use_container_width=True, config={"displayModeBar": False, "staticPlot": False})
 
+            # ── DIVISÃO POR PESSOA ──
             df_pessoa = df_mes[df_mes["tipo"] == "Saída"].groupby("quem")["valor"].sum()
             if not df_pessoa.empty:
                 st.markdown('<div class="section-title">Gastos por pessoa</div>', unsafe_allow_html=True)
@@ -764,6 +685,7 @@ with aba2:
                         <div class="mc-value">R${nos:,.0f}</div>
                     </div>""", unsafe_allow_html=True)
 
+            # ── EXPORTAR CSV ──
             st.markdown('<div class="section-title">Exportar</div>', unsafe_allow_html=True)
             csv_bytes = df_mes.copy()
             csv_bytes["data"] = csv_bytes["data"].dt.strftime("%d/%m/%Y")
@@ -776,20 +698,23 @@ with aba2:
                 use_container_width=True
             )
 
+            # ── TABELA COMPACTA ──
             st.markdown('<div class="section-title">Lançamentos do mês</div>', unsafe_allow_html=True)
             df_show2 = df_mes.sort_values("data", ascending=False).copy()
-            df_show2["data"]  = df_show2["data"].dt.strftime("%d/%m")
+            df_show2["data"] = df_show2["data"].dt.strftime("%d/%m")
             df_show2["valor"] = df_show2["valor"].apply(lambda x: f"R${x:.2f}")
             df_show2 = df_show2[["data", "descricao", "tipo", "valor"]].rename(columns={
-                "data": "Data", "descricao": "Descrição", "tipo": "Tipo", "valor": "Valor"
+                "data": "Data", "descricao": "Descrição",
+                "tipo": "Tipo", "valor": "Valor"
             })
             st.dataframe(df_show2, use_container_width=True, hide_index=True)
 
     except Exception as e:
-        st.error(f"Erro na aba Análises: {e}")
+        st.error(f"Erro: {e}")
+
 
 # ══════════════════════════════════════════
-# ABA 3 – INVESTIMENTOS
+# ABA 3 - INVESTIMENTOS
 # ══════════════════════════════════════════
 with aba3:
     st.markdown("### 📈 Investimentos")
@@ -801,27 +726,36 @@ with aba3:
 
         data_inv      = st.date_input("📅 Data", value=dt.date.today(), key="data_inv_form")
         categoria_inv = st.selectbox("🏦 Categoria", CATEGORIAS_INV, key="cat_inv_form")
-        motivo_inv    = st.text_input("📝 Motivo / Descrição", placeholder="Ex: Aporte mensal Tesouro Selic", key="motivo_inv_form")
-        valor_inv     = st.number_input("💵 Valor (R$)", min_value=0.0, step=0.01, format="%.2f", key="valor_inv_form")
+        motivo_inv    = st.text_input(
+            "📝 Motivo / Descrição",
+            placeholder="Ex: Aporte mensal Tesouro Selic",
+            key="motivo_inv_form"
+        )
+        valor_inv = st.number_input("💵 Valor (R$)", min_value=0.0, step=0.01, format="%.2f", key="valor_inv_form")
 
         submitted_inv = st.form_submit_button("💾 SALVAR INVESTIMENTO", type="primary", use_container_width=True)
 
     if submitted_inv:
         if valor_inv == 0:
             st.warning("⚠️ Coloque um valor maior que zero!")
-        elif not motivo_inv.strip():
+        elif not motivo_inv:
             st.warning("⚠️ Adicione uma descrição!")
         else:
             with st.spinner("Salvando..."):
-                salvar_investimento(data_inv, categoria_inv, motivo_inv, tipo_inv_limpo, valor_inv)
-                st.toast(f"✅ {tipo_inv_limpo} de R$ {valor_inv:.2f} salvo!", icon="📈")
+                try:
+                    salvar_investimento(data_inv, categoria_inv, motivo_inv, tipo_inv_limpo, valor_inv)
+                    st.toast(f"✅ {tipo_inv_limpo} de R$ {valor_inv:.2f} salvo!", icon="📈")
+                except Exception as e:
+                    st.error(f"Erro: {e}")
 
     st.markdown("---")
 
     try:
-        if not df_inv_global.empty:
-            aportes   = df_inv_global[df_inv_global["tipo"] == "Aporte"]["valor"].sum()
-            resgates  = df_inv_global[df_inv_global["tipo"] == "Resgate"]["valor"].sum()
+        df_inv = ler_investimentos()
+
+        if not df_inv.empty:
+            aportes  = df_inv[df_inv["tipo"] == "Aporte"]["valor"].sum()
+            resgates = df_inv[df_inv["tipo"] == "Resgate"]["valor"].sum()
             saldo_inv = aportes - resgates
 
             c1, c2 = st.columns(2)
@@ -829,22 +763,34 @@ with aba3:
                 st.markdown(f"<div class='card-verde'><h3>💰 Aportes</h3><h1>R${aportes:,.0f}</h1></div>", unsafe_allow_html=True)
             with c2:
                 st.markdown(f"<div class='card-vermelho'><h3>💸 Resgates</h3><h1>R${resgates:,.0f}</h1></div>", unsafe_allow_html=True)
+
             st.markdown(f"<div class='card-roxo'><h3>📊 Saldo da Carteira</h3><h1>R${saldo_inv:,.0f}</h1></div>", unsafe_allow_html=True)
 
             st.markdown("---")
+
+            # Gráfico por categoria
             st.markdown("#### 🏦 Aportes por Categoria")
-            df_aportes = df_inv_global[df_inv_global["tipo"] == "Aporte"]
+            df_aportes = df_inv[df_inv["tipo"] == "Aporte"]
             if not df_aportes.empty:
                 cat_inv_group = df_aportes.groupby("categoria")["valor"].sum().reset_index()
-                fig_inv = px.pie(cat_inv_group, values="valor", names="categoria", hole=0.4)
+                fig_inv = px.pie(
+                    cat_inv_group, values="valor", names="categoria",
+                    hole=0.4
+                )
                 fig_inv.update_traces(textposition='inside', textinfo='percent+label', textfont_size=11)
-                fig_inv.update_layout(showlegend=False, margin=dict(t=10, b=10, l=10, r=10), height=260)
+                fig_inv.update_layout(
+                    showlegend=False,
+                    margin=dict(t=10, b=10, l=10, r=10),
+                    height=260
+                )
                 st.plotly_chart(fig_inv, use_container_width=True, config={"displayModeBar": False})
 
             st.markdown("---")
+
+            # Histórico
             st.markdown("#### 📋 Histórico")
-            df_inv_show = df_inv_global.sort_values("data", ascending=False).copy()
-            df_inv_show["data"]  = df_inv_show["data"].dt.strftime("%d/%m/%Y")
+            df_inv_show = df_inv.sort_values("data", ascending=False).copy()
+            df_inv_show["data"] = df_inv_show["data"].dt.strftime("%d/%m/%Y")
             df_inv_show["valor"] = df_inv_show["valor"].apply(lambda x: f"R$ {x:.2f}")
             df_inv_show = df_inv_show.rename(columns={
                 "data": "Data", "categoria": "Categoria",
@@ -852,84 +798,78 @@ with aba3:
             })
             st.dataframe(df_inv_show, use_container_width=True, hide_index=True)
 
+            # Exclusão com confirmação
             with st.expander("🗑️ Excluir registro"):
-                df_inv_sorted = df_inv_global.sort_values("data", ascending=False).copy()
+                df_inv_sorted = df_inv.sort_values("data", ascending=False).copy()
                 df_inv_sorted["data_fmt"] = df_inv_sorted["data"].dt.strftime("%d/%m/%Y")
                 opcoes_inv = [
                     f"{row['data_fmt']} | {row['motivo']} | R$ {row['valor']:.2f}"
                     for _, row in df_inv_sorted.iterrows()
                 ]
-                sel_inv     = st.selectbox("Selecione:", opcoes_inv, key="del_inv")
-                idx_inv     = opcoes_inv.index(sel_inv)
+                sel_inv = st.selectbox("Selecione:", opcoes_inv, key="del_inv")
+                idx_inv = opcoes_inv.index(sel_inv)
                 indice_inv_real = df_inv_sorted.index[idx_inv]
                 confirmar_del_inv = st.checkbox("☑️ Confirmar exclusão", key="confirm_del_inv")
                 if confirmar_del_inv:
                     if st.button("🗑️ CONFIRMAR EXCLUSÃO", type="secondary", key="btn_del_inv"):
                         with st.spinner("Excluindo..."):
-                            # MELHORIA 3: nome da aba real, não índice hardcoded
-                            excluir_registro(indice_inv_real, ABA_INVESTIMENTOS)
-                            st.toast("✅ Registro excluído!", icon="🗑️")
-                            st.rerun()
+                            try:
+                                excluir_registro(indice_inv_real, aba_id=1)
+                                st.toast("✅ Registro excluído!", icon="🗑️")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro: {e}")
         else:
             st.info("📭 Nenhum investimento registrado ainda!")
 
     except Exception as e:
-        st.error(f"Erro na aba Investimentos: {e}")
+        st.error(f"Erro: {e}")
 
 # ══════════════════════════════════════════
-# ABA 4 – METAS  (MELHORIA 4: persistência real na planilha)
+# ABA 4 - METAS
 # ══════════════════════════════════════════
 with aba4:
     st.markdown("### 🎯 Metas de Gastos")
 
     try:
-        if df_global.empty:
+        df = ler_dados()
+
+        if df.empty:
             st.info("📭 Sem dados ainda!")
         else:
-            meses_disponiveis = df_global["data"].dt.to_period("M").dropna().unique()
+            meses_disponiveis = df["data"].dt.to_period("M").dropna().unique()
             meses_str = sorted([str(m) for m in meses_disponiveis], reverse=True)
-            mes_meta  = st.selectbox("📅 Mês:", meses_str, key="mes_meta")
-            df_mes_meta = df_global[df_global["data"].dt.to_period("M").astype(str) == mes_meta]
-
-            # Carrega metas salvas na planilha
-            metas_salvas = ler_metas()
+            mes_meta = st.selectbox("📅 Mês:", meses_str, key="mes_meta")
+            df_mes_meta = df[df["data"].dt.to_period("M").astype(str) == mes_meta]
 
             st.markdown("#### 💰 Meta Global")
-            meta_global  = st.number_input("🎯 Limite total (R$)", min_value=0.0, value=5000.0, step=100.0, format="%.2f")
+            meta_global = st.number_input(
+                "🎯 Limite total (R$)",
+                min_value=0.0, value=5000.0, step=100.0, format="%.2f"
+            )
             saidas_total = df_mes_meta[df_mes_meta["tipo"] == "Saída"]["valor"].sum()
-            prog_global  = min(saidas_total / meta_global, 1.0) if meta_global > 0 else 0
-            emoji_g      = "✅" if prog_global < 0.75 else ("⚠️" if prog_global < 1.0 else "🚨")
+            prog_global = min(saidas_total / meta_global, 1.0) if meta_global > 0 else 0
+            emoji_g = "✅" if prog_global < 0.75 else ("⚠️" if prog_global < 1.0 else "🚨")
             st.progress(prog_global, text=f"{emoji_g} R$ {saidas_total:,.2f} de R$ {meta_global:,.2f} ({prog_global*100:.1f}%)")
 
             st.markdown("---")
             st.markdown("#### 🏷️ Por Categoria")
 
-            # MELHORIA 4: edita as metas e salva de volta na planilha
-            novas_metas = {}
             for cat in CATEGORIAS_SAIDA:
                 gasto_cat = df_mes_meta[
                     (df_mes_meta["tipo"] == "Saída") & (df_mes_meta["categoria"] == cat)
                 ]["valor"].sum()
                 meta_cat = st.number_input(
-                    f"{cat} (R$)",
-                    min_value=0.0,
-                    value=float(metas_salvas.get(cat, METAS_PADRAO.get(cat, 200.0))),
-                    step=50.0, format="%.2f",
-                    key=f"meta_{cat}"
+                    f"{cat} (R$)", min_value=0.0,
+                    value=METAS_PADRAO.get(cat, 200.0),
+                    step=50.0, format="%.2f", key=f"meta_{cat}"
                 )
-                novas_metas[cat] = meta_cat
                 if meta_cat > 0:
-                    prog    = min(gasto_cat / meta_cat, 1.0)
-                    emoji   = "✅" if prog < 0.75 else ("⚠️" if prog < 1.0 else "🚨")
+                    prog = min(gasto_cat / meta_cat, 1.0)
+                    emoji = "✅" if prog < 0.75 else ("⚠️" if prog < 1.0 else "🚨")
                     st.progress(prog, text=f"{emoji} {cat}: R$ {gasto_cat:,.2f} / R$ {meta_cat:,.2f} ({prog*100:.1f}%)")
                 else:
                     st.caption(f"📊 {cat}: R$ {gasto_cat:,.2f} gastos")
 
-            st.markdown("")
-            if st.button("💾 SALVAR METAS", use_container_width=True):
-                with st.spinner("Salvando metas..."):
-                    salvar_metas(novas_metas)
-                    st.toast("✅ Metas salvas com sucesso!", icon="🎯")
-
     except Exception as e:
-        st.error(f"Erro na aba Metas: {e}")
+        st.error(f"Erro: {e}")
