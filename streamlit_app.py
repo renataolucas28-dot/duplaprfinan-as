@@ -140,5 +140,35 @@ def excluir_registro(indice_real):
     st.cache_data.clear()
 
 def analisar_gastos_completos(df_mes):
+    """Análise completa: Patrick só, Renata só, Patrick/Casal, Renata/Casal, Casal"""
+    
+    # Gastos individuais 100%
     patrick_so = df_mes[(df_mes["tipo"] == "Saída") & (df_mes["quem"] == "Patrick só")]["valor"].sum()
-    renata_so = df_mes[(df_mes["tipo"]
+    renata_so = df_mes[(df_mes["tipo"] == "Saída") & (df_mes["quem"] == "Renata só")]["valor"].sum()
+    
+    # Gastos Patrick/Casal (50% cada)
+    patrick_casal = df_mes[(df_mes["tipo"] == "Saída") & (df_mes["quem"] == "Patrick/Casal")]["valor"].sum() * 0.5
+    renata_casal_patrick = patrick_casal  # Mesma divisão
+    
+    # Gastos Renata/Casal (50% cada)
+    renata_casal = df_mes[(df_mes["tipo"] == "Saída") & (df_mes["quem"] == "Renata/Casal")]["valor"].sum() * 0.5
+    patrick_casal_renata = renata_casal
+    
+    # Gastos Casal puro (50% cada)
+    casal = df_mes[(df_mes["tipo"] == "Saída") & (df_mes["quem"] == "Casal")]["valor"].sum() * 0.5
+    patrick_casal_puro = casal
+    renata_casal_puro = casal
+    
+    # Totais finais
+    patrick_total = patrick_so + patrick_casal + patrick_casal_renata + patrick_casal_puro
+    renata_total = renata_so + renata_casal_patrick + renata_casal + renata_casal_puro
+    
+    return {
+        "patrick_so": patrick_so,
+        "renata_so": renata_so,
+        "patrick_casal": patrick_casal * 2,  # Valor bruto
+        "renata_casal": renata_casal * 2,
+        "casal": casal * 2,
+        "patrick_total": patrick_total,
+        "renata_total": renata_total
+    }
