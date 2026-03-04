@@ -266,16 +266,17 @@ with aba0:
 with aba1:
     st.markdown("### ➕ Novo Lançamento")
 
-    with st.form("form_lancamento", clear_on_submit=True):
-        # Aqui está a correção:
-        # Retorna "Entrada"/"Saída" como valor, e usa emoji só para exibição.
-        tipo_limpo = st.radio(
-            "Tipo:",
-            ["Entrada", "Saída"],
-            horizontal=True,
-            format_func=lambda x: "📈 Entrada" if x == "Entrada" else "📉 Saída"
-        )
+    # 1) FORA do form (atualiza na hora)
+    tipo_limpo = st.radio(
+        "Tipo:",
+        ["Entrada", "Saída"],
+        horizontal=True,
+        format_func=lambda x: "📈 Entrada" if x == "Entrada" else "📉 Saída",
+        key="tipo_lancamento"
+    )
 
+    # 2) DENTRO do form (campos do lançamento)
+    with st.form("form_lancamento", clear_on_submit=True):
         data = st.date_input("📅 Data", value=dt.date.today())
         descricao = st.text_input("📝 Descrição", placeholder="Ex: Gasolina semanal")
 
@@ -299,6 +300,7 @@ with aba1:
                 try:
                     salvar_registro(data, descricao, categoria, tipo_limpo, valor, quem)
                     st.toast(f"✅ {tipo_limpo} R$ {valor:.2f} salvo!", icon="💾")
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Erro: {e}")
 
