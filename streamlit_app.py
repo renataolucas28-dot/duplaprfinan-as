@@ -333,10 +333,8 @@ def salvar_investimento(data, categoria, motivo, tipo, valor):
         raise RuntimeError(f"Falha ao salvar investimento: {e}")
 
 def excluir_registro(indice_real, aba_id=0):
-    # garante que é int nativo
     indice_real = int(indice_real)
     aba_id = int(aba_id)
-
     linha = indice_real + 2
     requests = [{
         "deleteDimension": {
@@ -461,37 +459,72 @@ with aba0:
         st.error(f"Erro: {e}")
 
 # ══════════════════════════════════════════
-# ABA 1 - LANÇAMENTOS
+# ABA 1 - LANÇAMENTOS (MELHORADA)
 # ══════════════════════════════════════════
 with aba1:
     st.markdown("### ➕ Novo Lançamento")
 
-    with st.form("form_lancamento", clear_on_submit=True):
-        tipo = st.radio("Tipo:", ["📈 Entrada", "📉 Saída"], horizontal=True)
-        tipo_limpo = "Entrada" if "Entrada" in tipo else "Saída"
+    # Tipo
+    tipo = st.radio("Tipo:", ["📈 Entrada", "📉 Saída"], horizontal=True, key="tipo_lanc")
+    tipo_limpo = "Entrada" if "Entrada" in tipo else "Saída"
 
-        data = st.date_input("📅 Data", value=dt.date.today())
-        descricao = st.text_input(
-            "📝 Descrição",
-            placeholder="Ex: Compra no mercado"
+    # Data e descrição
+    data = st.date_input("📅 Data", value=dt.date.today(), key="data_lanc")
+    descricao = st.text_input(
+        "📝 Descrição",
+        placeholder="Ex: Compra no mercado ou Jantar a dois",
+        key="desc_lanc"
+    )
+
+    # Quem pagou
+    quem = st.radio(
+        "👤 Quem pagou?",
+        ["Patrick", "Renata", "Nós dois"],
+        horizontal=True,
+        key="quem_lanc"
+    )
+
+    col_cat, col_val = st.columns(2)
+    with col_cat:
+        if tipo_limpo == "Entrada":
+            categoria = st.selectbox("🏷️ Categoria", CATEGORIAS_ENTRADA, key="cat_entrada")
+        else:
+            categoria = st.selectbox("🏷️ Categoria", CATEGORIAS_SAIDA, key="cat_saida")
+    with col_val:
+        valor = st.number_input("💵 Valor (R$)", min_value=0.0, step=0.01, format="%.2f", key="valor_lanc")
+
+    # Divisão de gastos quando for "Nós dois" e Saída
+    if quem == "Nós dois" and tipo_limpo == "Saída":
+        st.markdown("#### 💑 Como dividir esse gasto entre vocês?")
+        modo_split = st.radio(
+            "Escolha o tipo de divisão:",
+            ["50% / 50%", "Por porcentagem"],
+            horizontal=True,
+            key="modo_split"
         )
+        if modo_split == "Por porcentagem":
+            pct_patrick = st.slider("Patrick (%)", 0, 100, 50, key="pct_patrick")
+            pct_renata = 100 - pct_patrick
+            st.caption(f"Renata fica com {pct_renata}% desse gasto.")
+        else:
+            pct_patrick = 50
+            pct_renata = 50
 
-        # Categorias são fixas por tipo no momento do submit — usamos um selectbox padrão
-        # Nota: dentro do form o tipo não muda o selectbox dinamicamente,
-        # então exibimos todas separadas por um expander opcional.
-        col_cat, col_quem = st.columns(2)
-        with col_cat:
-            categoria_entrada = st.selectbox("🏷️ Categoria (Entrada)", CATEGORIAS_ENTRADA)
-            categoria_saida   = st.selectbox("🏷️ Categoria (Saída)", CATEGORIAS_SAIDA)
-        with col_quem:
-            quem = st.selectbox("👤 Quem?", PESSOAS)
+        # Preview
+        if valor > 0:
+            val_p = valor * (pct_patrick / 100)
+            val_r = valor * (pct_renata / 100)
+            st.info(
+                f"Este gasto de R$ {valor:.2f} será lançado como:\n"
+                f"- Patrick: R$ {val_p:.2f}\n"
+                f"- Renata: R$ {val_r:.2f}"
+            )
+    else:
+        pct_patrick = None
+        pct_renata = None
 
-        valor = st.number_input("💵 Valor (R$)", min_value=0.0, step=0.01, format="%.2f")
-
-        submitted = st.form_submit_button("💾 SALVAR LANÇAMENTO", type="primary", use_container_width=True)
-
-    if submitted:
-        categoria = categoria_entrada if tipo_limpo == "Entrada" else categoria_saida
+    # Botão de salvar
+    if st.button("💾 SALVAR LANÇAMENTO", use_container_width=True):
         if valor == 0:
             st.warning("⚠️ Coloque um valor maior que zero!")
         elif not descricao:
@@ -499,7 +532,15 @@ with aba1:
         else:
             with st.spinner("Salvando..."):
                 try:
-                    salvar_registro(data, descricao, categoria, tipo_limpo, valor, quem)
+                    if quem == "Nós dois" and tipo_limpo == "Saída":
+                        # Divide em duas linhas: uma para Patrick e outra para Renata
+                        valor_p = round(valor * (pct_patrick / 100), 2)
+                        valor_r = round(valor * (pct_renata / 100), 2)
+                        salvar_registro(data, descricao, categoria, tipo_limpo, valor_p, "Patrick")
+                        salvar_registro(data, descricao, categoria, tipo_limpo, valor_r, "Renata")
+                    else:
+                        salvar_registro(data, descricao, categoria, tipo_limpo, valor, quem)
+
                     st.toast(f"✅ {tipo_limpo} de R$ {valor:.2f} salva com sucesso!", icon="💾")
                 except Exception as e:
                     st.error(f"Erro: {e}")
@@ -629,7 +670,6 @@ with aba2:
                 )
                 st.plotly_chart(fig_pizza, use_container_width=True, config={"displayModeBar": False})
 
-
             # ── GRÁFICO HISTÓRICO MENSAL (barras) ──
             st.markdown('<div class="section-title">Histórico mensal</div>', unsafe_allow_html=True)
             df_evolucao = (
@@ -711,7 +751,6 @@ with aba2:
 
     except Exception as e:
         st.error(f"Erro: {e}")
-
 
 # ══════════════════════════════════════════
 # ABA 3 - INVESTIMENTOS
