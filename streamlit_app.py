@@ -431,15 +431,7 @@ with aba0:
             df_valido    = df_global.dropna(subset=["data"])
             df_mes_atual = df_valido[df_valido["data"].dt.to_period("M").astype(str) == hoje_periodo]
 
-            if not df_mes_atual.empty:
-                proj = projecao_mes(df_mes_atual)
-                st.markdown('<div class="section-title">🔮 Projeção do Mês Atual</div>', unsafe_allow_html=True)
-                c1, c2 = st.columns(2)
-                with c1:
-                    render_mini_card("📉", "Gasto até hoje", proj["saidas_ate_hoje"], "mc-red")
-                with c2:
-                    render_mini_card("🔮", "Projeção até o fim do mês", proj["projecao"], "mc-orange")
-                st.caption(f"Média diária: {fmt_brl(proj['media_diaria'])} · {proj['dias_passados']} dias passados · {proj['dias_restantes']} restantes")
+            
 
             st.markdown('<div class="section-title">📌 Último Lançamento</div>', unsafe_allow_html=True)
             render_ultimo_lancamento(df_global)
