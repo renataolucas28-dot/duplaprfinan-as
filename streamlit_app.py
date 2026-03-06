@@ -423,6 +423,66 @@ with aba2:
                     <div class="mc-label">Saídas marcadas como "Casal"</div>
                     <div class="mc-value">R${saldo_ind['saida_casal']:,.2f}</div>
                 </div>""", unsafe_allow_html=True)
+            # ── Gastos do Casal (manutenção da casa) ──
+            st.markdown('<div class="section-title">🏠 Gastos para Manter a Casa</div>', unsafe_allow_html=True)
+
+            gasto_patrick_casal = df_periodo[(df_periodo["tipo"] == "Saída") & (df_periodo["quem"] == "Patrick/Casal")]["valor"].sum()
+            gasto_renata_casal  = df_periodo[(df_periodo["tipo"] == "Saída") & (df_periodo["quem"] == "Renata/Casal")]["valor"].sum()
+            total_casa          = gasto_patrick_casal + gasto_renata_casal
+
+            if total_casa > 0:
+                pct_patrick = (gasto_patrick_casal / total_casa) * 100
+                pct_renata  = (gasto_renata_casal  / total_casa) * 100
+
+                # Card total
+                st.markdown(f"""
+                <div class="hero-card">
+                    <div class="label">💑 Total gasto para manter a casa</div>
+                    <div class="value">R$ {total_casa:,.2f}</div>
+                    <div class="sub">Patrick/Casal + Renata/Casal</div>
+                </div>""", unsafe_allow_html=True)
+
+                # Cards individuais com % e valor
+                cols_casa = st.columns(2)
+                with cols_casa[0]:
+                    st.markdown(f"""
+                    <div class="mini-card mc-blue">
+                        <div class="mc-icon">👨‍💼</div>
+                        <div class="mc-label">Patrick contribuiu</div>
+                        <div class="mc-value">R$ {gasto_patrick_casal:,.2f}</div>
+                        <div style="font-size:1rem; font-weight:700; margin-top:4px; opacity:0.9;">{pct_patrick:.1f}% do total</div>
+                    </div>""", unsafe_allow_html=True)
+
+                with cols_casa[1]:
+                    st.markdown(f"""
+                    <div class="mini-card mc-purple">
+                        <div class="mc-icon">👩‍💼</div>
+                        <div class="mc-label">Renata contribuiu</div>
+                        <div class="mc-value">R$ {gasto_renata_casal:,.2f}</div>
+                        <div style="font-size:1rem; font-weight:700; margin-top:4px; opacity:0.9;">{pct_renata:.1f}% do total</div>
+                    </div>""", unsafe_allow_html=True)
+
+                # Barra de proporção visual
+                st.markdown(f"""
+                <div style="border-radius:12px; overflow:hidden; height:22px; display:flex; margin-bottom:6px;">
+                    <div style="width:{pct_patrick:.1f}%; background:linear-gradient(135deg,#1a3a7b,#2e6da4);
+                                display:flex; align-items:center; justify-content:center;
+                                font-size:0.72rem; color:white; font-weight:700;">
+                        {pct_patrick:.1f}%
+                    </div>
+                    <div style="width:{pct_renata:.1f}%; background:linear-gradient(135deg,#4a1a7b,#8e44ad);
+                                display:flex; align-items:center; justify-content:center;
+                                font-size:0.72rem; color:white; font-weight:700;">
+                        {pct_renata:.1f}%
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:#7f8c9a; margin-bottom:8px;">
+                    <span>👨‍💼 Patrick</span><span>👩‍💼 Renata</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+            else:
+                st.info("Nenhum gasto do tipo Patrick/Casal ou Renata/Casal no período.")
 
             # ── Gráfico pizza por categoria (saídas) ──
             df_saidas = df_periodo[df_periodo["tipo"] == "Saída"]
