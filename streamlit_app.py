@@ -660,18 +660,7 @@ with aba2:
                 else:
                     st.info("Sem mês anterior disponível para comparação.")
 
-            # ── Projeção do mês ──
-            if opcao_periodo == "Mês específico":
-                hoje_periodo_str = str(dt.date.today())[:7]
-                if mes_selecionado == hoje_periodo_str:
-                    st.markdown('<div class="section-title">🔮 Projeção até o Fim do Mês</div>', unsafe_allow_html=True)
-                    proj = projecao_mes(df_periodo)
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        render_mini_card("📉", "Gasto até hoje", proj["saidas_ate_hoje"], "mc-red")
-                    with c2:
-                        render_mini_card("🔮", "Projeção total do mês", proj["projecao"], "mc-orange")
-                    st.caption(f"Média diária: {fmt_brl(proj['media_diaria'])} · Dia {proj['dias_passados']} de {proj['total_dias']}")
+          
 
                     # Projeção vs metas
                     if not df_metas.empty:
