@@ -155,21 +155,28 @@ def excluir_registro(indice_real):
 # ─────────────────────────────────────────
 def calcular_saldo_individual(df):
     """
-    Calcula quanto sobrou para cada pessoa no período dado.
-
-    Regras:
-    - Entrada "Patrick só"   → vai para Patrick
-    - Entrada "Renata só"    → vai para Renata
-    - Entrada "Patrick/Casal"→ vai para Patrick
-    - Entrada "Renata/Casal" → vai para Renata
-    - Entrada "Casal"        → metade para cada um
-
-    - Saída "Patrick só"     → sai de Patrick
-    - Saída "Renata só"      → sai de Renata
-    - Saída "Patrick/Casal"  → sai de Patrick
-    - Saída "Renata/Casal"   → sai de Renata
-    - Saída "Casal"          → metade de cada um
+    Patrick: entradas 'Patrick só' − saídas 'Patrick só' + 'Patrick/Casal'
+    Renata:  entradas 'Renata só'  − saídas 'Renata só'  + 'Renata/Casal'
+    Casal puro: saídas marcadas como 'Casal' (sem dono de conta definido)
+    Saldo casal: todas entradas − todas saídas
     """
+    entrada_patrick = df[(df["tipo"] == "Entrada") & (df["quem"] == "Patrick só")]["valor"].sum()
+    entrada_renata  = df[(df["tipo"] == "Entrada") & (df["quem"] == "Renata só")]["valor"].sum()
+
+    saida_patrick = df[(df["tipo"] == "Saída") & (df["quem"].isin(["Patrick só", "Patrick/Casal"]))]["valor"].sum()
+    saida_renata  = df[(df["tipo"] == "Saída") & (df["quem"].isin(["Renata só",  "Renata/Casal"]))]["valor"].sum()
+    saida_casal   = df[(df["tipo"] == "Saída") & (df["quem"] == "Casal")]["valor"].sum()
+
+    return {
+        "entrada_patrick": entrada_patrick,
+        "entrada_renata":  entrada_renata,
+        "saida_patrick":   saida_patrick,
+        "saida_renata":    saida_renata,
+        "saida_casal":     saida_casal,
+        "saldo_patrick":   entrada_patrick - saida_patrick,
+        "saldo_renata":    entrada_renata  - saida_renata,
+    }
+
     def soma(tipo_reg, quem_lista, fator=1.0):
         return df[(df["tipo"] == tipo_reg) & (df["quem"].isin(quem_lista))]["valor"].sum() * fator
 
