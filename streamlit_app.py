@@ -489,9 +489,9 @@ with aba2:
             if not df_saidas.empty:
                 st.markdown('<div class="section-title">Gastos por Categoria</div>', unsafe_allow_html=True)
                 cat_group = df_saidas.groupby("categoria")["valor"].sum().reset_index().sort_values("valor", ascending=False)
-                fig = px.pie(cat_group, values="valor", names="categoria", hole=0.55)
+                fig = px.pie(cat_group, values="valor", names="categoria", hole=0.45)
                 fig.update_traces(textposition='inside', textinfo='percent+label')
-                fig.update_layout(height=320, showlegend=False)
+                fig.update_layout(height=380, showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
 
             # ── Tabela de lançamentos ──
