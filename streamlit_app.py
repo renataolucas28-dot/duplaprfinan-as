@@ -50,7 +50,7 @@ def check_login():
         entrar = st.form_submit_button("Entrar", type="primary", use_container_width=True)
 
     if entrar:
-        if senha == st.secrets.get("app_password", "PR"):
+        if senha == st.secrets.get("app_password", "30042830"):
             st.session_state["autenticado"] = True
             st.rerun()
         else:
