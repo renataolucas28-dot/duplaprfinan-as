@@ -151,13 +151,13 @@ def excluir_registro(indice_real):
     ler_dados.clear()
 
 # ─────────────────────────────────────────
-# FUNÇÃO: SALDO INDIVIDUAL POR PESSOA
+# FUNÇÃO: SALDO INDIVIDUAL
 # ─────────────────────────────────────────
 def calcular_saldo_individual(df):
     """
-    Patrick: entradas 'Patrick só' − saídas 'Patrick só' + 'Patrick/Casal'
-    Renata:  entradas 'Renata só'  − saídas 'Renata só'  + 'Renata/Casal'
-    Casal puro: saídas marcadas como 'Casal' (sem dono de conta definido)
+    Patrick: entradas 'Patrick só' − saídas ('Patrick só' + 'Patrick/Casal')
+    Renata:  entradas 'Renata só'  − saídas ('Renata só'  + 'Renata/Casal')
+    Gastos 'Casal': saem do saldo do casal mas não têm dono de conta definido
     Saldo casal: todas entradas − todas saídas
     """
     entrada_patrick = df[(df["tipo"] == "Entrada") & (df["quem"] == "Patrick só")]["valor"].sum()
@@ -175,38 +175,6 @@ def calcular_saldo_individual(df):
         "saida_casal":     saida_casal,
         "saldo_patrick":   entrada_patrick - saida_patrick,
         "saldo_renata":    entrada_renata  - saida_renata,
-    }
-
-    def soma(tipo_reg, quem_lista, fator=1.0):
-        return df[(df["tipo"] == tipo_reg) & (df["quem"].isin(quem_lista))]["valor"].sum() * fator
-
-    # Entradas
-    entrada_patrick = (
-        soma("Entrada", ["Patrick só", "Patrick/Casal"]) +
-        soma("Entrada", ["Casal"], 0.5)
-    )
-    entrada_renata = (
-        soma("Entrada", ["Renata só", "Renata/Casal"]) +
-        soma("Entrada", ["Casal"], 0.5)
-    )
-
-    # Saídas
-    saida_patrick = (
-        soma("Saída", ["Patrick só", "Patrick/Casal"]) +
-        soma("Saída", ["Casal"], 0.5)
-    )
-    saida_renata = (
-        soma("Saída", ["Renata só", "Renata/Casal"]) +
-        soma("Saída", ["Casal"], 0.5)
-    )
-
-    return {
-        "entrada_patrick": entrada_patrick,
-        "entrada_renata": entrada_renata,
-        "saida_patrick": saida_patrick,
-        "saida_renata": saida_renata,
-        "saldo_patrick": entrada_patrick - saida_patrick,
-        "saldo_renata": entrada_renata - saida_renata,
     }
 
 # ─────────────────────────────────────────
@@ -236,7 +204,7 @@ with aba0:
         if df_global.empty:
             st.info("📭 Nenhum lançamento ainda. Vá para **Lançar**!")
         else:
-            # Saldo geral = TODAS entradas − TODAS saídas (histórico completo)
+            # Saldo geral = TODAS entradas − TODAS saídas
             total_entradas = df_global[df_global["tipo"] == "Entrada"]["valor"].sum()
             total_saidas   = df_global[df_global["tipo"] == "Saída"]["valor"].sum()
             saldo_geral    = total_entradas - total_saidas
@@ -259,21 +227,20 @@ with aba0:
             st.markdown('<div class="section-title">💳 Saldo Individual</div>', unsafe_allow_html=True)
             c1, c2 = st.columns(2)
 
-            def cor_card(saldo):
-                return "card-verde" if saldo >= 0 else "card-vermelho"
-
             with c1:
                 sinal_p = "+" if saldo_ind["saldo_patrick"] >= 0 else ""
+                cor_p = "card-verde" if saldo_ind["saldo_patrick"] >= 0 else "card-vermelho"
                 st.markdown(f"""
-                <div class="{cor_card(saldo_ind['saldo_patrick'])}">
+                <div class="{cor_p}">
                     <h3>👨‍💼 Patrick</h3>
                     <h1>{sinal_p}R$ {saldo_ind['saldo_patrick']:,.2f}</h1>
                 </div>""", unsafe_allow_html=True)
 
             with c2:
                 sinal_r = "+" if saldo_ind["saldo_renata"] >= 0 else ""
+                cor_r = "card-verde" if saldo_ind["saldo_renata"] >= 0 else "card-vermelho"
                 st.markdown(f"""
-                <div class="{cor_card(saldo_ind['saldo_renata'])}">
+                <div class="{cor_r}">
                     <h3>👩‍💼 Renata</h3>
                     <h1>{sinal_r}R$ {saldo_ind['saldo_renata']:,.2f}</h1>
                 </div>""", unsafe_allow_html=True)
@@ -409,8 +376,8 @@ with aba2:
             saldo_ind = calcular_saldo_individual(df_periodo)
 
             st.markdown('<div class="section-title">💳 Saldo Individual</div>', unsafe_allow_html=True)
-
             c1, c2 = st.columns(2)
+
             with c1:
                 sinal_p = "+" if saldo_ind["saldo_patrick"] >= 0 else ""
                 cor_p = "card-verde" if saldo_ind["saldo_patrick"] >= 0 else "card-vermelho"
@@ -446,6 +413,16 @@ with aba2:
                         <div style="font-size:0.72rem; opacity:0.75; margin-top:6px;">📉 Saídas</div>
                         <div class="mc-value">R${saida:,.2f}</div>
                     </div>""", unsafe_allow_html=True)
+
+            # ── Gastos 'Casal' sem dono ──
+            if saldo_ind["saida_casal"] > 0:
+                st.markdown('<div class="section-title">💑 Gastos Casal (sem dono de conta)</div>', unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class="mini-card mc-orange">
+                    <div class="mc-icon">💑</div>
+                    <div class="mc-label">Saídas marcadas como "Casal"</div>
+                    <div class="mc-value">R${saldo_ind['saida_casal']:,.2f}</div>
+                </div>""", unsafe_allow_html=True)
 
             # ── Gráfico pizza por categoria (saídas) ──
             df_saidas = df_periodo[df_periodo["tipo"] == "Saída"]
